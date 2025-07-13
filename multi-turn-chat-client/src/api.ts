@@ -1,52 +1,65 @@
-// src/api.ts
-import axios from 'axios';
-import { EventSourcePolyfill } from 'event-source-polyfill';
-
-
-const BASE_URL = 'http://xxxx:8000/v1/chat';
-const API_KEY = 'sk-your-key-test'; // ← 替换成你的密钥
-
-const instance = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${API_KEY}`,
-  },
-});
+const BASE_URL = 'http://43.132.224.225:8000/v1';
+const API_KEY = 'sk-test'; // ← 替换为你自己的密钥
 
 export async function createConversation(systemPrompt: string): Promise<string> {
-  const response = await instance.post('/conversations', { system_prompt: systemPrompt });
-  return response.data.conversation_id;
-}
-
-export async function sendMessage(conversationId: string, content: string, model: string): Promise<string> {
-  const response = await instance.post(`/conversations/${conversationId}/messages`, {
-    role: 'user',
-    content,
-    model,
+  const res = await fetch(`${BASE_URL}/chat/conversations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({ system_prompt: systemPrompt }),
   });
-  return response.data.reply;
+
+  const data = await res.json();
+  return data.conversation_id;
 }
 
-export async function getMessages(conversationId: string): Promise<Array<{ role: string, content: string }>> {
-  const response = await instance.get(`/conversations/${conversationId}/messages`);
-  return response.data.messages;
+export async function sendMessage(
+  conversationId: string,
+  content: string,
+  model: string
+): Promise<string> {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({ role: 'user', content, model }),
+  });
+
+  const data = await res.json();
+  return data.reply;
+}
+
+export async function getMessages(
+  conversationId: string
+): Promise<Array<{ role: string; content: string }>> {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
+    headers: {
+      Authorization: `Bearer ${API_KEY}`,
+    },
+  });
+
+  const data = await res.json();
+  return data.messages;
 }
 
 export async function sendMessageStream(
   conversationId: string,
   content: string,
   model: string,
-  onChunk: (token: string) => void,
+  onChunk: (text: string) => void,
   onDone: () => void,
   onError: (err: any) => void
 ) {
   try {
-    const response = await fetch(`${BASE_URL}/conversations/${conversationId}/messages`, {
+    const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
         role: 'user',
@@ -56,11 +69,11 @@ export async function sendMessageStream(
       }),
     });
 
-    if (!response.ok || !response.body) {
-      throw new Error(`SSE 请求失败，状态码: ${response.status}`);
+    if (!res.body || !res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
 
-    const reader = response.body.getReader();
+    const reader = res.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
 
@@ -69,32 +82,41 @@ export async function sendMessageStream(
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
 
-      let lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // 最后一行可能是不完整的，保留
-
-      for (let line of lines) {
-        line = line.trim();
-        if (!line.startsWith('data:')) continue;
-
-        const data = line.slice(5).trim();
-        if (data === '[DONE]') {
-          onDone();
-          return;
-        }
-
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed?.content) {
-            onChunk(parsed.content);
+      for (const part of parts) {
+        if (part.startsWith('data:')) {
+          const json = part.slice(5).trim();
+          if (json === '[DONE]') {
+            onDone();
+            return;
           }
-        } catch (err) {
-          console.warn('解析 SSE 数据失败:', data);
+
+          try {
+            const payload = JSON.parse(json);
+            if (payload.content) {
+              onChunk(payload.content);
+            }
+          } catch (err) {
+            console.warn('解析 SSE 错误:', err, json);
+          }
         }
       }
     }
+    onDone();
   } catch (err) {
     onError(err);
   }
 }
 
+export async function getModels(): Promise<string[]> {
+  const res = await fetch(`${BASE_URL}/models`, {
+    headers: {
+      Authorization: `Bearer ${API_KEY}`,
+    },
+  });
+
+  const data = await res.json();
+  return data.data.map((m: any) => m.id);
+}

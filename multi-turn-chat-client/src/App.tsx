@@ -3,54 +3,37 @@ import {
   createConversation,
   sendMessage,
   getMessages,
-  sendMessageStream
+  sendMessageStream,
+  getModels,
 } from './api';
 import './App.css';
 import ConversationList from './ConversationList';
-
-type Message = {
-  role: string;
-  content: string;
-};
-
-type ConversationMeta = {
-  id: string;
-  model: string;
-  createdAt: string;
-};
+import ChatBox from './ChatBox';
+import { Message, ConversationMeta } from './types';
 
 const DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.';
-const DEFAULT_MODEL = 'ChatGPT-4o-Latest';
-
-const MODEL_OPTIONS = [
-  'GPT-3.5-Turbo',
-  'ChatGPT-4o-Latest',
-  'Claude-3.5-Sonnet',
-  'Gemini-1.5-Pro',
-  'Mistral-7B-Instruct-v0.2',
-];
 
 function App() {
   const [conversationId, setConversationId] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [model, setModel] = useState(DEFAULT_MODEL);
+  const [model, setModel] = useState('');
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [streamMode, setStreamMode] = useState(true);
   const [conversationList, setConversationList] = useState<ConversationMeta[]>([]);
 
-  // 初始化加载
+  useEffect(() => {
+    getModels().then(setModelOptions);
+  }, []);
+
   useEffect(() => {
     const stored = localStorage.getItem('conversations');
     if (stored) {
       const list: ConversationMeta[] = JSON.parse(stored);
       setConversationList(list);
-
       if (list.length > 0) {
-        const first = list[0];
-        setConversationId(first.id);
-        setModel(first.model);
-        getMessages(first.id).then(setMessages);
+        loadConversation(list[0]);
       } else {
         handleNewConversation();
       }
@@ -59,7 +42,6 @@ function App() {
     }
   }, []);
 
-  // 保存会话元数据
   const saveConversations = (list: ConversationMeta[]) => {
     localStorage.setItem('conversations', JSON.stringify(list));
     setConversationList(list);
@@ -69,31 +51,19 @@ function App() {
     setConversationId(meta.id);
     setModel(meta.model);
     const history = await getMessages(meta.id);
-    setMessages(history);
+    setMessages(history.map(msg => ({ ...msg, collapsed: false })));
   };
 
   const handleNewConversation = async () => {
-    try {
-      const id = await createConversation(DEFAULT_SYSTEM_PROMPT);
-
-      const meta: ConversationMeta = {
-        id,
-        model,
-        createdAt: new Date().toISOString(),
-      };
-
-      const newList = [meta, ...conversationList];
-      saveConversations(newList);
-
-      console.log('✅ 新会话已创建:', id);
-
-      setConversationId(id);
-      setModel(DEFAULT_MODEL);
-      const history = await getMessages(id);
-      setMessages(history);
-    } catch (err) {
-      console.error('❌ 创建新会话失败:', err);
-    }
+    const id = await createConversation(DEFAULT_SYSTEM_PROMPT);
+    const meta: ConversationMeta = {
+      id,
+      model: model || 'ChatGPT-4o-Latest',
+      createdAt: new Date().toISOString(),
+    };
+    const newList = [meta, ...conversationList];
+    saveConversations(newList);
+    await loadConversation(meta);
   };
 
   const handleSelectConversation = async (id: string) => {
@@ -103,22 +73,24 @@ function App() {
     }
   };
 
-  const fetchMessages = async (id: string) => {
-    const history = await getMessages(id);
-    setMessages(history);
+  const collapsePrevious = () => {
+    setMessages((prev) =>
+      prev.map((m, i) => (i >= prev.length - 2 ? m : { ...m, collapsed: true }))
+    );
   };
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
     setLoading(true);
+    collapsePrevious();
 
-    const newMessages = [...messages, { role: 'user', content: input }];
+    const newMessages = [...messages, { role: 'user', content: input, collapsed: false }];
     setMessages(newMessages);
     setInput('');
 
     if (streamMode) {
       let streamedReply = '';
-      const assistantMsg = { role: 'assistant', content: '' };
+      const assistantMsg = { role: 'assistant', content: '', collapsed: false };
       setMessages((prev) => [...prev, assistantMsg]);
 
       sendMessageStream(
@@ -129,7 +101,11 @@ function App() {
           streamedReply += chunk;
           setMessages((prev) => {
             const updated = [...prev];
-            updated[updated.length - 1] = { ...assistantMsg, content: streamedReply };
+            updated[updated.length - 1] = {
+              ...assistantMsg,
+              content: streamedReply,
+              collapsed: false,
+            };
             return updated;
           });
         },
@@ -142,13 +118,36 @@ function App() {
     } else {
       try {
         await sendMessage(conversationId, input, model);
-        await fetchMessages(conversationId);
+        const history = await getMessages(conversationId);
+        setMessages(history.map(msg => ({ ...msg, collapsed: false })));
       } catch (err) {
         console.error('发送失败:', err);
       } finally {
         setLoading(false);
       }
     }
+  };
+
+  const toggleCollapse = (index: number) => {
+    setMessages((prev) => {
+      const updated = [...prev];
+      updated[index].collapsed = !updated[index].collapsed;
+      return updated;
+    });
+  };
+
+  const handleCopy = (content: string) => {
+    navigator.clipboard.writeText(content);
+  };
+
+  const handleSave = (content: string) => {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = 'message.txt';
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -170,7 +169,7 @@ function App() {
             value={model}
             onChange={(e) => setModel(e.target.value)}
           >
-            {MODEL_OPTIONS.map((m) => (
+            {modelOptions.map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
@@ -185,14 +184,12 @@ function App() {
           </label>
         </div>
 
-        <div className="chat-box">
-          {messages.map((msg, index) => (
-            <div key={index} className={`chat-msg ${msg.role}`}>
-              <strong>{msg.role === 'user' ? '你' : msg.role === 'assistant' ? '助手' : '系统'}:</strong>
-              <div>{msg.content}</div>
-            </div>
-          ))}
-        </div>
+        <ChatBox
+          messages={messages}
+          onToggle={toggleCollapse}
+          onCopy={handleCopy}
+          onSave={handleSave}
+        />
 
         <div className="chat-controls">
           <textarea
