@@ -1,0 +1,148 @@
+/* src/App.css */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f6f8;
+}
+
+.chat-container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+  text-align: center;
+  color: #333;
+}
+
+.chat-box {
+  max-height: 500px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  padding: 15px;
+  background-color: #fafafa;
+  border-radius: 8px;
+}
+
+.chat-msg {
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.chat-msg.user {
+  text-align: right;
+  color: #1a73e8;
+}
+
+.chat-msg.assistant {
+  text-align: left;
+  color: #222;
+}
+
+.chat-msg.system {
+  text-align: center;
+  font-style: italic;
+  color: #777;
+}
+
+.chat-controls {
+  display: flex;
+  gap: 10px;
+}
+
+textarea {
+  flex: 1;
+  min-height: 60px;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: none;
+}
+
+button {
+  padding: 0 20px;
+  background-color: #1a73e8;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+button:hover {
+  background-color: #155ab6;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.chat-toolbar {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-toolbar label {
+  font-weight: bold;
+}
+
+.chat-toolbar select {
+  padding: 5px 10px;
+  font-size: 15px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.conversation-list {
+  width: 250px;
+  flex-shrink: 0;
+  border-right: 1px solid #ddd;
+  padding-right: 10px;
+  margin-right: 20px;
+}
+
+.conversation-list h3 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.conversation-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.conversation-list li {
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  background-color: #f6f6f6;
+}
+
+.conversation-list li:hover {
+  background-color: #e0e0e0;
+}
+
+.conversation-list li.active {
+  background-color: #d0e4ff;
+  font-weight: bold;
+}
+
+.conversation-list button {
+  margin-top: 10px;
+  padding: 6px 12px;
+  font-size: 14px;
+}
