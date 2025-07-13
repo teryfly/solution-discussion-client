@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+// ✅ 文件：App.tsx（配合右键菜单和新建弹窗）
+import React, { useEffect, useRef, useState } from 'react';
 import {
   createConversation,
-  sendMessage,
-  getMessages,
   sendMessageStream,
+  getMessages,
   getModels,
 } from './api';
 import './App.css';
@@ -20,8 +20,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [model, setModel] = useState('');
   const [modelOptions, setModelOptions] = useState<string[]>([]);
-  const [streamMode, setStreamMode] = useState(true);
   const [conversationList, setConversationList] = useState<ConversationMeta[]>([]);
+
+  const chatBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getModels().then(setModelOptions);
@@ -34,11 +35,7 @@ function App() {
       setConversationList(list);
       if (list.length > 0) {
         loadConversation(list[0]);
-      } else {
-        handleNewConversation();
       }
-    } else {
-      handleNewConversation();
     }
   }, []);
 
@@ -47,18 +44,42 @@ function App() {
     setConversationList(list);
   };
 
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      chatBoxRef.current?.scrollTo({
+        top: chatBoxRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }, 100);
+  };
+
+  const scrollToTop = () => {
+    chatBoxRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const loadConversation = async (meta: ConversationMeta) => {
     setConversationId(meta.id);
     setModel(meta.model);
+    setMessages([{ role: 'system', content: '加载中...', collapsed: false }]);
     const history = await getMessages(meta.id);
-    setMessages(history.map(msg => ({ ...msg, collapsed: false })));
+    const collapsedHistory = history.map((msg, idx) => {
+      const tooLong = msg.content.length > 100;
+      return {
+        ...msg,
+        collapsed: idx < history.length - 2 && tooLong,
+      };
+    });
+    setMessages(collapsedHistory);
+    scrollToBottom();
   };
 
-  const handleNewConversation = async () => {
-    const id = await createConversation(DEFAULT_SYSTEM_PROMPT);
+  const handleNewConversation = async (options?: { name?: string; model: string; system?: string }) => {
+    const systemPrompt = options?.system || DEFAULT_SYSTEM_PROMPT;
+    const id = await createConversation(systemPrompt);
     const meta: ConversationMeta = {
       id,
-      model: model || 'ChatGPT-4o-Latest',
+      model: options?.model,
+      name: options?.name,
       createdAt: new Date().toISOString(),
     };
     const newList = [meta, ...conversationList];
@@ -68,15 +89,40 @@ function App() {
 
   const handleSelectConversation = async (id: string) => {
     const found = conversationList.find(c => c.id === id);
-    if (found) {
-      await loadConversation(found);
+    if (found) await loadConversation(found);
+  };
+
+  const handleRenameConversation = (id: string, newName: string) => {
+    const updated = conversationList.map(conv => conv.id === id ? { ...conv, name: newName } : conv);
+    saveConversations(updated);
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    const updated = conversationList.filter(conv => conv.id !== id);
+    saveConversations(updated);
+    if (id === conversationId) {
+      if (updated.length > 0) loadConversation(updated[0]);
+      else setMessages([]);
+    }
+  };
+
+  const handleModelChange = (id: string, newModel: string) => {
+    const updated = conversationList.map(conv => conv.id === id ? { ...conv, model: newModel } : conv);
+    saveConversations(updated);
+    if (id === conversationId) {
+      setModel(newModel);
     }
   };
 
   const collapsePrevious = () => {
-    setMessages((prev) =>
-      prev.map((m, i) => (i >= prev.length - 2 ? m : { ...m, collapsed: true }))
-    );
+    setMessages((prev) => {
+      const newMessages = [...prev];
+      if (newMessages.length >= 2) {
+        newMessages[newMessages.length - 2].collapsed = true;
+        newMessages[newMessages.length - 1].collapsed = true;
+      }
+      return newMessages;
+    });
   };
 
   const handleSend = async () => {
@@ -84,62 +130,51 @@ function App() {
     setLoading(true);
     collapsePrevious();
 
-    const newMessages = [...messages, { role: 'user', content: input, collapsed: false }];
-    setMessages(newMessages);
+    const newUserMsg = { role: 'user', content: input, collapsed: false };
+    const loadingMsg = { role: 'assistant', content: '⌛', collapsed: false };
+    setMessages((prev) => [...prev, newUserMsg, loadingMsg]);
     setInput('');
 
-    if (streamMode) {
-      let streamedReply = '';
-      const assistantMsg = { role: 'assistant', content: '', collapsed: false };
-      setMessages((prev) => [...prev, assistantMsg]);
-
-      sendMessageStream(
-        conversationId,
-        input,
-        model,
-        (chunk) => {
-          streamedReply += chunk;
-          setMessages((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1] = {
-              ...assistantMsg,
-              content: streamedReply,
-              collapsed: false,
-            };
-            return updated;
-          });
-        },
-        () => setLoading(false),
-        (err) => {
-          console.error('流式出错:', err);
-          setLoading(false);
-        }
-      );
-    } else {
-      try {
-        await sendMessage(conversationId, input, model);
-        const history = await getMessages(conversationId);
-        setMessages(history.map(msg => ({ ...msg, collapsed: false })));
-      } catch (err) {
-        console.error('发送失败:', err);
-      } finally {
+    let streamedReply = '';
+    sendMessageStream(
+      conversationId,
+      input,
+      model,
+      (chunk) => {
+        streamedReply += chunk;
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: 'assistant',
+            content: streamedReply || '⌛',
+            collapsed: false,
+          };
+          return updated;
+        });
+      },
+      () => {
+        setLoading(false);
+        scrollToBottom();
+      },
+      (err) => {
+        console.error('流式出错:', err);
         setLoading(false);
       }
-    }
+    );
   };
 
   const toggleCollapse = (index: number) => {
     setMessages((prev) => {
       const updated = [...prev];
-      updated[index].collapsed = !updated[index].collapsed;
+      updated[index] = {
+        ...updated[index],
+        collapsed: !updated[index].collapsed,
+      };
       return updated;
     });
   };
 
-  const handleCopy = (content: string) => {
-    navigator.clipboard.writeText(content);
-  };
-
+  const handleCopy = (content: string) => navigator.clipboard.writeText(content);
   const handleSave = (content: string) => {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -151,45 +186,35 @@ function App() {
   };
 
   return (
-    <div style={{ display: 'flex' }}>
+    <div style={{ display: 'flex', flex: 1 }}>
       <ConversationList
         conversations={conversationList}
         activeId={conversationId}
         onSelect={handleSelectConversation}
         onNew={handleNewConversation}
+        onRename={handleRenameConversation}
+        onDelete={handleDeleteConversation}
+        onModelChange={handleModelChange}
+        modelOptions={modelOptions}
+        model={model}
+        onModelChangeGlobal={setModel} // 可选：若保留全局模型选择
       />
 
-      <div className="chat-container">
-        <h2>🧠 多轮对话助手</h2>
+      <div className="chat-container" style={{ flex: 1 }}>
+        <div className="chat-box-wrapper">
+          <div className="scroll-arrow top" onClick={scrollToTop}>⬆</div>
 
-        <div className="chat-toolbar">
-          <label htmlFor="model-select">模型：</label>
-          <select
-            id="model-select"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            {modelOptions.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-
-          <label style={{ marginLeft: '20px' }}>
-            <input
-              type="checkbox"
-              checked={streamMode}
-              onChange={(e) => setStreamMode(e.target.checked)}
+          <div className="chat-box" ref={chatBoxRef}>
+            <ChatBox
+              messages={messages}
+              onToggle={toggleCollapse}
+              onCopy={handleCopy}
+              onSave={handleSave}
             />
-            使用流式模式
-          </label>
-        </div>
+          </div>
 
-        <ChatBox
-          messages={messages}
-          onToggle={toggleCollapse}
-          onCopy={handleCopy}
-          onSave={handleSave}
-        />
+          <div className="scroll-arrow bottom" onClick={scrollToBottom}>⬇</div>
+        </div>
 
         <div className="chat-controls">
           <textarea
