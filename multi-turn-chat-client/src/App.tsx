@@ -117,10 +117,17 @@ function App() {
   const collapsePrevious = () => {
     setMessages((prev) => {
       const newMessages = [...prev];
-      if (newMessages.length >= 2) {
-        newMessages[newMessages.length - 2].collapsed = true;
-        newMessages[newMessages.length - 1].collapsed = true;
+      const n = newMessages.length;
+
+      // 保证最后两条消息不折叠，前面全部根据内容长度判断
+      for (let i = 0; i < n - 2; i++) {
+        const msg = newMessages[i];
+        newMessages[i] = {
+          ...msg,
+          collapsed: msg.content.length > 100,
+        };
       }
+
       return newMessages;
     });
   };

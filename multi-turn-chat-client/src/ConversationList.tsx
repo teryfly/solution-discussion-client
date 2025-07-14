@@ -66,10 +66,13 @@ const ConversationList: React.FC<Props> = ({
               if (name) onRename(id, name);
             },
           },
-          ...modelOptions.map((model) => ({
-            label: `切换为模型：${model}`,
-            onClick: () => onModelChange(id, model),
-          })),
+          {
+            label: '切换模型',
+            submenu: modelOptions.map((model) => ({
+              label: model,
+              onClick: () => onModelChange(id, model),
+            })),
+          },
           {
             label: '删除会话',
             onClick: () => confirmDelete(id),
