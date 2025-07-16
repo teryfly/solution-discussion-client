@@ -1,4 +1,4 @@
-// ✅ 文件：ConversationList.tsx（集成右键菜单 + 新建会话弹窗 + 下拉菜单 + 样式优化）
+// ✅ 文件: ConversationList.tsx（支持项目分组 + 二列显示 + 上下文菜单）
 import React, { useState } from 'react';
 import { ConversationMeta } from './types';
 import ContextMenu, { MenuItem } from './ContextMenu';
@@ -8,7 +8,7 @@ interface Props {
   conversations: ConversationMeta[];
   activeId: string;
   onSelect: (id: string) => void;
-  onNew: (options: { name?: string; model: string; system?: string }) => void;
+  onNew: (options: { name?: string; model: string; system?: string; project_id: number }) => void;
   onRename: (id: string, newName: string) => void;
   onDelete: (id: string) => void;
   onModelChange: (id: string, newModel: string) => void;
@@ -25,18 +25,18 @@ const ConversationList: React.FC<Props> = ({
   onModelChange,
   modelOptions,
 }) => {
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    id: string;
-  } | null>(null);
-
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string>('其它');
 
-  const handleContextMenu = (
-    e: React.MouseEvent,
-    id: string
-  ) => {
+  const grouped = conversations.reduce((acc, conv) => {
+    const key = conv.projectName || '其它';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(conv);
+    return acc;
+  }, {} as Record<string, ConversationMeta[]>);
+
+  const handleContextMenu = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, id });
   };
@@ -44,7 +44,7 @@ const ConversationList: React.FC<Props> = ({
   const confirmDelete = (id: string) => {
     const conv = conversations.find(c => c.id === id);
     const name = conv?.name || '未命名';
-    if (window.confirm(`确定要删除会话「${name}」（ID: ${id}）吗？`)) {
+    if (window.confirm(`确定要删除会话「${name}」吗？`)) {
       onDelete(id);
     }
   };
@@ -83,41 +83,49 @@ const ConversationList: React.FC<Props> = ({
   };
 
   return (
-    <div className="conversation-list">
-      <h3 style={{ marginBottom: 10 }}>会话列表</h3>
-      <ul style={{ paddingLeft: 0, marginBottom: 20 }}>
-        {conversations.map((conv) => (
-          <li
-            key={conv.id}
-            className={conv.id === activeId ? 'active' : ''}
-            onClick={() => onSelect(conv.id)}
-            onContextMenu={(e) => handleContextMenu(e, conv.id)}
+    <div className="conversation-list" style={{ display: 'flex' }}>
+      {/* 左列：项目列表 */}
+      <div style={{ width: '120px', borderRight: '1px solid #ccc' }}>
+        {Object.keys(grouped).map(project => (
+          <div
+            key={project}
+            onClick={() => setSelectedProject(project)}
             style={{
-              listStyle: 'none',
               padding: '8px 10px',
-              border: '1px solid #ccc',
-              borderRadius: '6px',
-              marginBottom: '8px',
-              backgroundColor: conv.id === activeId ? '#e6f0ff' : '#f9f9f9',
               cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              background: selectedProject === project ? '#d0e4ff' : undefined,
             }}
           >
-            <div style={{ fontWeight: 500 }}>{conv.name || '未命名会话'}</div>
-            <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-              ID: {conv.id}<br />
-              模型: {conv.model}
-            </div>
-          </li>
+            {project}
+          </div>
         ))}
-      </ul>
+        <button onClick={() => setShowNewModal(true)} style={{ marginTop: 12 }}>➕ 新建</button>
+      </div>
 
-      <button
-        onClick={() => setShowNewModal(true)}
-        style={{ width: '100%', padding: '10px 0', borderRadius: 6, background: '#007bff', color: 'white', border: 'none', cursor: 'pointer' }}
-      >
-        ➕ 新建会话
-      </button>
+      {/* 右列：该项目下会话 */}
+      <div style={{ flex: 1, paddingLeft: 10 }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {grouped[selectedProject]?.map((conv) => (
+            <li
+              key={conv.id}
+              className={conv.id === activeId ? 'active' : ''}
+              onClick={() => onSelect(conv.id)}
+              onContextMenu={(e) => handleContextMenu(e, conv.id)}
+              style={{
+                padding: '8px',
+                borderRadius: 6,
+                marginBottom: 8,
+                backgroundColor: conv.id === activeId ? '#e6f0ff' : '#f6f6f6',
+                border: '1px solid #ccc',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ fontWeight: 500 }}>{conv.name || '未命名会话'}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>模型: {conv.model}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {renderContextMenu()}
 

@@ -1,36 +1,64 @@
-const BASE_URL = 'http://43.132.224.225:8000/v1';
-const API_KEY = 'sk-test'; // ← 替换为你自己的密钥
+// api.ts
+const BASE_URL = 'http://localhost:8000/v1';
+const API_KEY = 'sk-test';
 
-export async function createConversation(systemPrompt: string): Promise<string> {
+export async function createConversation(
+  systemPrompt: string,
+  projectId: number,
+  name?: string,
+  model?: string
+): Promise<string> {
+  const body: any = {
+    system_prompt: systemPrompt,
+    project_id: projectId,
+  };
+  if (name) body.name = name;
+  if (model) body.model = model;
+
   const res = await fetch(`${BASE_URL}/chat/conversations`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
     },
-    body: JSON.stringify({ system_prompt: systemPrompt }),
+    body: JSON.stringify(body),
   });
-
   const data = await res.json();
   return data.conversation_id;
 }
 
-export async function sendMessage(
-  conversationId: string,
-  content: string,
-  model: string
-): Promise<string> {
-  const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
-    method: 'POST',
+export async function deleteConversation(id: string): Promise<void> {
+  await fetch(`${BASE_URL}/chat/conversations/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+}
+
+export async function updateConversationProject(id: string, projectId: number): Promise<void> {
+  await fetch(`${BASE_URL}/chat/conversations/${id}`, {
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
     },
-    body: JSON.stringify({ role: 'user', content, model }),
+    body: JSON.stringify({ project_id: projectId }),
   });
+}
 
-  const data = await res.json();
-  return data.reply;
+export async function getGroupedConversations(): Promise<any> {
+  const res = await fetch(`${BASE_URL}/chat/conversations/grouped`, {
+    headers: {
+      Authorization: `Bearer ${API_KEY}`,
+    },
+  });
+  return await res.json();
+}
+
+export async function getProjects(): Promise<{ id: number; name: string }[]> {
+  const res = await fetch(`${BASE_URL}/projects`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  return await res.json();
 }
 
 export async function getMessages(
@@ -41,7 +69,6 @@ export async function getMessages(
       Authorization: `Bearer ${API_KEY}`,
     },
   });
-
   const data = await res.json();
   return data.messages;
 }
@@ -69,9 +96,7 @@ export async function sendMessageStream(
       }),
     });
 
-    if (!res.body || !res.ok) {
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    }
+    if (!res.body || !res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder('utf-8');
@@ -95,9 +120,7 @@ export async function sendMessageStream(
 
           try {
             const payload = JSON.parse(json);
-            if (payload.content) {
-              onChunk(payload.content);
-            }
+            if (payload.content) onChunk(payload.content);
           } catch (err) {
             console.warn('解析 SSE 错误:', err, json);
           }
@@ -112,11 +135,8 @@ export async function sendMessageStream(
 
 export async function getModels(): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/models`, {
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-    },
+    headers: { Authorization: `Bearer ${API_KEY}` },
   });
-
   const data = await res.json();
   return data.data.map((m: any) => m.id);
 }
