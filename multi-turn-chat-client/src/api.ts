@@ -161,3 +161,67 @@ export async function updateConversationModel(id: string, model: string): Promis
     body: JSON.stringify({ model }),
   });
 }
+
+// 计划分类API
+export async function getPlanCategories(): Promise<{ id: number; name: string }[]> {
+  // 先查 localStorage
+  const cache = localStorage.getItem('plan_categories');
+  let categories: { id: number; name: string }[] = [];
+  try {
+    if (cache) {
+      categories = JSON.parse(cache);
+    }
+  } catch (e) {}
+
+  // 请求服务端
+  const res = await fetch(`${BASE_URL}/plan/categories`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  const data = await res.json();
+  // 只取 id 和 name 存储
+  const cleanData = (data || []).map((item: any) => ({
+    id: item.id,
+    name: item.name,
+  }));
+  localStorage.setItem('plan_categories', JSON.stringify(cleanData));
+  return cleanData;
+}
+
+// 新建计划文档
+export async function createPlanDocument({
+  project_id,
+  filename,
+  category_id,
+  content,
+  version = 1,
+  source = 'chat',
+}: {
+  project_id: number;
+  filename: string;
+  category_id: number;
+  content: string;
+  version?: number;
+  source?: string;
+}): Promise<any> {
+  const res = await fetch(`${BASE_URL}/plan/documents`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({
+      project_id,
+      filename,
+      category_id,
+      content,
+      version,
+      source,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || '新建文档失败');
+  }
+  return await res.json();
+}
+

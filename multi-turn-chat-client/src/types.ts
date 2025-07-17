@@ -13,3 +13,8 @@ export type ConversationMeta = {
   projectId?: number;
   projectName?: string;
 };
+
+export type PlanCategory = {
+  id: number;
+  name: string;
+};

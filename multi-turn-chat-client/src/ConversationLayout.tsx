@@ -6,8 +6,8 @@ import ChatBox from './ChatBox';
 import ChatInput from './ChatInput';
 import ModelSelector from './ModelSelector';
 import useConversations from './hooks/useConversations';
+import usePlanCategories from './hooks/usePlanCategories';
 import useChatStream from './useChatStream';
-
 
 function ConversationLayout() {
   const navigate = useNavigate();
@@ -65,6 +65,9 @@ function ConversationLayout() {
     }
   };
 
+  // 获取当前会话元信息，用于“发送到”功能
+  const currentMeta = conversationList.find((c) => c.id === conversationId);
+
   return (
     <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
       {/* 会话列表侧栏 */}
@@ -93,6 +96,10 @@ function ConversationLayout() {
               onToggle={toggleCollapse}
               onCopy={copyMessage}
               onSave={saveMessage}
+              conversationMeta={{
+                projectId: currentMeta?.projectId,
+                name: currentMeta?.name,
+              }}
             />
           </div>
           <div className="scroll-arrow bottom" onClick={scrollToBottom} style={{ position: 'absolute', bottom: 0, right: 8, zIndex: 2, cursor: 'pointer' }}>⬇</div>
