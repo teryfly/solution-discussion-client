@@ -18,25 +18,33 @@ interface Props {
     model: string;
     system?: string;
     project_id: number;
+    project_name?: string;
   }) => void;
   modelOptions: string[];
 }
 
 const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, modelOptions }) => {
   const [name, setName] = useState(getDefaultName());
-  const [model, setModel] = useState(modelOptions[0] || '');
+  const [model, setModel] = useState('');
   const [system, setSystem] = useState('');
   const [projectId, setProjectId] = useState(0);
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
 
   useEffect(() => {
     if (visible) {
-      setName(getDefaultName()); // 每次打开弹窗时都刷新默认名
+      setName(getDefaultName());
+      setModel(modelOptions[0] || ''); // ✅ 设置默认模型
       getProjects().then(setProjects);
     }
-  }, [visible]);
+  }, [visible, modelOptions]);
 
   if (!visible) return null;
+
+  const handleCreate = () => {
+    const projectName = projects.find(p => p.id === projectId)?.name || '其它';
+    onCreate({ name, model, system, project_id: projectId, project_name: projectName }); // ✅ 加 project_name
+    onClose();
+  };
 
   return (
     <div className="modal-overlay">
@@ -69,10 +77,7 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
         </select>
 
         <div className="modal-actions">
-          <button onClick={() => {
-            onCreate({ name, model, system, project_id: projectId });
-            onClose();
-          }}>创建</button>
+          <button onClick={handleCreate}>创建</button>
           <button onClick={onClose}>取消</button>
         </div>
       </div>

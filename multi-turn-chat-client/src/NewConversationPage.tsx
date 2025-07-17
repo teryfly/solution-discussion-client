@@ -1,7 +1,7 @@
-// src/NewConversationPage.tsx
+// NewConversationPage.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createConversation } from './api';
+import { createConversation, getProjects, getModels } from './api';
 
 interface Project {
   id: number;
@@ -14,22 +14,43 @@ const NewConversationPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const [models, setModels] = useState<string[]>([]);
   const [name, setName] = useState('');
-  const [model, setModel] = useState('gpt-4');
+  const [model, setModel] = useState('');
   const [system, setSystem] = useState(DEFAULT_PROMPT);
   const [projectId, setProjectId] = useState(0);
 
   useEffect(() => {
-    fetch('http://localhost:8000/v1/projects')
-      .then((res) => res.json())
-      .then(setProjects)
-      .catch((err) => console.error('加载项目失败:', err));
+    getProjects()
+      .then(res => {
+        setProjects(res);
+      })
+      .catch(err => console.error('加载项目失败:', err));
+
+    getModels()
+      .then(res => {
+        setModels(res);
+        if (res.length > 0) setModel(res[0]); // ✅ 设置默认模型
+      })
+      .catch(err => console.error('加载模型失败:', err));
   }, []);
 
   const handleCreate = async () => {
-    const conversationId = await createConversation(system, projectId);
-    // 跳回主页面并传递新 ID（你可用 navigate state 或 URL param）
-    navigate(`/chat/${conversationId}`);
+    if (!model) {
+      alert('模型尚未加载，请稍后重试');
+      return;
+    }
+
+    const projectName = projects.find(p => p.id === projectId)?.name || '其它';
+
+    const conversationId = await createConversation(system, projectId, name, model);
+
+    // ✅ 携带项目名用于自动定位
+    navigate(`/chat/${conversationId}`, {
+      state: {
+        highlightProject: projectName,
+      },
+    });
   };
 
   return (
@@ -49,15 +70,21 @@ const NewConversationPage: React.FC = () => {
       <div style={{ marginBottom: 12 }}>
         <label>选择模型：</label>
         <select value={model} onChange={(e) => setModel(e.target.value)} style={{ width: '100%' }}>
-          <option value="gpt-4">gpt-4</option>
-          <option value="gpt-3.5">gpt-3.5</option>
-          {/* 可动态加载模型 */}
+          {models.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
         </select>
       </div>
 
       <div style={{ marginBottom: 12 }}>
         <label>选择项目：</label>
-        <select value={projectId} onChange={(e) => setProjectId(Number(e.target.value))} style={{ width: '100%' }}>
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(Number(e.target.value))}
+          style={{ width: '100%' }}
+        >
           <option value={0}>其它</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>

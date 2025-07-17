@@ -5,15 +5,15 @@ const API_KEY = 'sk-test';
 export async function createConversation(
   systemPrompt: string,
   projectId: number,
-  name?: string,
-  model?: string
+  name: string = '',
+  model: string = ''
 ): Promise<string> {
-  const body: any = {
+  const body = {
     system_prompt: systemPrompt,
     project_id: projectId,
+    name,
+    model, // ✅ 始终传模型，即使是默认值
   };
-  if (name) body.name = name;
-  if (model) body.model = model;
 
   const res = await fetch(`${BASE_URL}/chat/conversations`, {
     method: 'POST',
@@ -23,6 +23,7 @@ export async function createConversation(
     },
     body: JSON.stringify(body),
   });
+
   const data = await res.json();
   return data.conversation_id;
 }
@@ -47,9 +48,7 @@ export async function updateConversationProject(id: string, projectId: number): 
 
 export async function getGroupedConversations(): Promise<any> {
   const res = await fetch(`${BASE_URL}/chat/conversations/grouped`, {
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-    },
+    headers: { Authorization: `Bearer ${API_KEY}` },
   });
   return await res.json();
 }
@@ -65,9 +64,7 @@ export async function getMessages(
   conversationId: string
 ): Promise<Array<{ role: string; content: string }>> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-    },
+    headers: { Authorization: `Bearer ${API_KEY}` },
   });
   const data = await res.json();
   return data.messages;
@@ -139,4 +136,28 @@ export async function getModels(): Promise<string[]> {
   });
   const data = await res.json();
   return data.data.map((m: any) => m.id);
+}
+
+// 添加以下两个方法 👇
+
+export async function updateConversationName(id: string, newName: string): Promise<void> {
+  await fetch(`${BASE_URL}/chat/conversations/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({ name: newName }),
+  });
+}
+
+export async function updateConversationModel(id: string, model: string): Promise<void> {
+  await fetch(`${BASE_URL}/chat/conversations/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({ model }),
+  });
 }

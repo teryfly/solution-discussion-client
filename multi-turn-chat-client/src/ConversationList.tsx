@@ -1,8 +1,16 @@
 // ✅ 文件: ConversationList.tsx（支持项目分组 + 二列显示 + 上下文菜单）
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import { ConversationMeta } from './types';
 import ContextMenu, { MenuItem } from './ContextMenu';
 import NewConversationModal from './NewConversationModal';
+import { useLocation } from 'react-router-dom';
+import {
+  updateConversationName,
+  updateConversationModel,
+  deleteConversation,
+} from './api'; // ✅ import 必须
+
+
 
 interface Props {
   conversations: ConversationMeta[];
@@ -28,6 +36,16 @@ const ConversationList: React.FC<Props> = ({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('其它');
+
+  const location = useLocation();
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.highlightProject) {
+      setSelectedProject(state.highlightProject); // ✅ 自动选中创建的项目分组
+    }
+  }, [location.state]);
+
+
 
   const grouped = conversations.reduce((acc, conv) => {
     const key = conv.projectName || '其它';
@@ -61,26 +79,41 @@ const ConversationList: React.FC<Props> = ({
         items={[
           {
             label: '重命名',
-            onClick: () => {
+            onClick: async () => {
               const name = prompt('请输入新名称', current?.name || '');
-              if (name) onRename(id, name);
+              if (name && name !== current?.name) {
+                await updateConversationName(id, name);      // ✅ 落库
+                onRename(id, name);                           // 更新前端状态
+              }
             },
           },
           {
             label: '切换模型',
             submenu: modelOptions.map((model) => ({
               label: model,
-              onClick: () => onModelChange(id, model),
+              onClick: async () => {
+                if (model !== current?.model) {
+                  await updateConversationModel(id, model);   // ✅ 落库
+                  onModelChange(id, model);                   // 更新前端状态
+                }
+              },
             })),
           },
           {
             label: '删除会话',
-            onClick: () => confirmDelete(id),
+            onClick: async () => {
+              const name = current?.name || '未命名';
+              if (window.confirm(`确定要删除会话「${name}」吗？`)) {
+                await deleteConversation(id);                // ✅ 落库
+                onDelete(id);                                // 更新前端状态
+              }
+            },
           },
         ]}
       />
     );
   };
+
 
   return (
     <div className="conversation-list" style={{ display: 'flex' }}>
@@ -132,9 +165,13 @@ const ConversationList: React.FC<Props> = ({
       <NewConversationModal
         visible={showNewModal}
         onClose={() => setShowNewModal(false)}
-        onCreate={onNew}
+        onCreate={(options) => {
+          onNew(options); // 创建新会话
+          setSelectedProject(options.project_name || '其它'); // ✅ 自动切换到新建项目分组
+        }}
         modelOptions={modelOptions}
       />
+
     </div>
   );
 };
