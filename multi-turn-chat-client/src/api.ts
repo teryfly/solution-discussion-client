@@ -1,6 +1,5 @@
 // api.ts
-const BASE_URL = 'http://localhost:8000/v1';
-const API_KEY = 'sk-test';
+import { BASE_URL, API_KEY } from './config'; // ✅ 使用统一配置
 
 export async function createConversation(
   systemPrompt: string,
@@ -12,7 +11,7 @@ export async function createConversation(
     system_prompt: systemPrompt,
     project_id: projectId,
     name,
-    model, // ✅ 始终传模型，即使是默认值
+    model,
   };
 
   const res = await fetch(`${BASE_URL}/chat/conversations`, {

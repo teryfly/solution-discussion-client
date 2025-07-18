@@ -1,13 +1,15 @@
 // NewConversationModal.tsx
 import React, { useEffect, useState } from 'react';
 import { getProjects } from './api';
+import { ROLE_PROMPTS } from './config';
 
-function getDefaultName() {
+function generateDefaultName(role: string) {
   const now = new Date();
-  return now.toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  }).replace(/\//g, '-');
+  const MM = String(now.getMonth() + 1).padStart(2, '0');
+  const DD = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  return `${role}${MM}${DD}${hh}${mm}`;
 }
 
 interface Props {
@@ -24,58 +26,120 @@ interface Props {
 }
 
 const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, modelOptions }) => {
-  const [name, setName] = useState(getDefaultName());
-  const [model, setModel] = useState('');
-  const [system, setSystem] = useState('');
-  const [projectId, setProjectId] = useState(0);
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
+  const [model, setModel] = useState('');
+  const [projectId, setProjectId] = useState(0);
+  const [role, setRole] = useState('需求分析师');
+  const [name, setName] = useState(generateDefaultName('需求分析师'));
+  const [system, setSystem] = useState(ROLE_PROMPTS['需求分析师']);
 
   useEffect(() => {
     if (visible) {
-      setName(getDefaultName());
-      setModel(modelOptions[0] || ''); // ✅ 设置默认模型
+      setRole('需求分析师');
+      setName(generateDefaultName('需求分析师'));
+      setSystem(ROLE_PROMPTS['需求分析师']);
+      setModel(modelOptions[0] || '');
       getProjects().then(setProjects);
     }
   }, [visible, modelOptions]);
 
-  if (!visible) return null;
+  const handleRoleChange = (r: string) => {
+    setRole(r);
+    setName(generateDefaultName(r));
+    if (r !== '通用助手') {
+      setSystem(ROLE_PROMPTS[r]);
+    } else {
+      setSystem('');
+    }
+  };
 
   const handleCreate = () => {
-    const projectName = projects.find(p => p.id === projectId)?.name || '其它';
-    onCreate({ name, model, system, project_id: projectId, project_name: projectName }); // ✅ 加 project_name
+    const projectName = projects.find((p) => p.id === projectId)?.name || '其它';
+    onCreate({
+      name,
+      model,
+      system,
+      project_id: projectId,
+      project_name: projectName,
+    });
     onClose();
   };
 
+  if (!visible) return null;
+
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal" style={{ maxWidth: 800 }}>
         <h3>新建会话</h3>
 
-        <label>会话名（可选）：</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} />
+        {/* 第一行：角色 + 会话名 */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label>助手角色：</label>
+            <select
+              value={role}
+              onChange={(e) => handleRoleChange(e.target.value)}
+            >
+              {Object.keys(ROLE_PROMPTS).map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label>会话名：</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+        </div>
 
-        <label>模型：</label>
-        <select value={model} onChange={(e) => setModel(e.target.value)}>
-          {modelOptions.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+        {/* 第二行：项目 + 模型 */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label>相关项目：</label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(Number(e.target.value))}
+            >
+              <option value={0}>其它</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label>选择模型：</label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              {modelOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-        <label>System Prompt（可选）：</label>
-        <textarea
-          rows={3}
-          value={system}
-          onChange={(e) => setSystem(e.target.value)}
-        />
+        {/* 第三行：仅通用助手时显示 system prompt */}
+        {role === '通用助手' && (
+          <div>
+            <label>System Prompt：</label>
+            <textarea
+              rows={3}
+              value={system}
+              onChange={(e) => setSystem(e.target.value)}
+            />
+          </div>
+        )}
 
-        <label>项目：</label>
-        <select value={projectId} onChange={(e) => setProjectId(Number(e.target.value))}>
-          <option value={0}>其它</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-
+        {/* 操作按钮 */}
         <div className="modal-actions">
           <button onClick={handleCreate}>创建</button>
           <button onClick={onClose}>取消</button>
