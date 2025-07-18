@@ -37,10 +37,14 @@ h2 {
   padding: 10px 14px;
   border-radius: 8px;
   max-width: 80%;
+  min-width: 30px;
   word-break: break-word;
   position: relative;
   transition: background-color 0.2s;
+  width: fit-content;    /* ⭐️ 让宽度随内容变化 */
+  box-sizing: border-box;
 }
+
 
 .chat-msg.user {
   background-color: #e8f0fe;
@@ -58,10 +62,16 @@ h2 {
   color: #222;
 }
 
+
+
 .chat-msg.system {
   text-align: center;
   font-style: italic;
   color: #777;
+}
+
+.chat-msg.system {
+  display: none !important;
 }
 
 .chat-msg .content {
@@ -69,10 +79,25 @@ h2 {
   margin-top: 4px;
   font-size: 15px;
 }
-
+.chat-msg.user .content {
+  text-align: left;
+}
 .chat-controls {
   display: flex;
   gap: 10px;
+}
+
+.chat-controls button {
+  line-height: 3.9;
+  height: 3.9em;
+  padding: 0 20px;
+  background-color: #1a73e8;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
 }
 
 textarea {
@@ -216,7 +241,7 @@ button:disabled {
 .chat-controls textarea {
   flex: 1;
   min-height: 60px;
-  max-height: 200px;
+  max-height: 600px;
   padding: 10px;
   font-size: 16px;
   border: 1px solid #ccc;
@@ -226,62 +251,4 @@ button:disabled {
   height: auto; /* 🔧 支持自动扩展 */
   line-height: 1.5;
   transition: height 0.2s ease;
-}
-
-/* --- 弹窗/模态框样式 --- */
-.modal-overlay {
-  position: fixed;
-  z-index: 2000;
-  inset: 0;
-  background: rgba(0,0,0,0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal {
-  min-width: 340px;
-  max-width: 96vw;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  padding: 28px 24px 18px 24px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.modal h3 {
-  margin: 0 0 12px 0;
-  text-align: center;
-}
-
-.modal label {
-  margin-bottom: 3px;
-  font-weight: bold;
-  font-size: 15px;
-}
-
-.modal input,
-.modal textarea,
-.modal select {
-  width: 100%;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  padding: 7px 9px;
-  font-size: 15px;
-}
-
-.modal textarea {
-  min-height: 60px;
-  resize: vertical;
-}
-
-.modal-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
 }
