@@ -68,7 +68,8 @@ const NewConversationPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 40, maxWidth: 1000, margin: '0 auto' }}>
+  <div className="new-conversation-page">
+    <div>
       <h2 style={{ textAlign: 'center', marginBottom: 30 }}>新建会话</h2>
 
       {/* 第一行：角色 + 会话名 */}
@@ -150,6 +151,8 @@ const NewConversationPage: React.FC = () => {
         <button onClick={() => navigate(-1)}>取消</button>
       </div>
     </div>
+  </div>
+  
   );
 };
 

@@ -1,5 +1,5 @@
 // ChatInput.tsx
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface ChatInputProps {
   value: string;
@@ -11,6 +11,25 @@ interface ChatInputProps {
 const ChatInput: React.FC<ChatInputProps> = ({ value, onChange, onSend, loading }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // 自动调整高度
+  useEffect(() => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
+  }, [value]);
+
+  // 在发送后重置高度
+  const handleSend = () => {
+    onSend(); // 触发外部逻辑
+
+    // ✅ 重置高度
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '60px';
+    }
+  };
+
   return (
     <div className="chat-controls">
       <textarea
@@ -18,24 +37,17 @@ const ChatInput: React.FC<ChatInputProps> = ({ value, onChange, onSend, loading 
         placeholder="输入你的消息..."
         value={value}
         onChange={e => onChange(e.target.value)}
-        onInput={e => {
-          const target = e.target as HTMLTextAreaElement;
-          target.style.height = 'auto';
-          target.style.height = target.scrollHeight + 'px';
-        }}
         onKeyDown={e => {
-          // Ctrl+Enter发送，Enter仅换行
           if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
-            onSend();
+            handleSend();
           }
         }}
         disabled={loading}
-
       />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <button
-          onClick={onSend}
+          onClick={handleSend}
           disabled={loading || !value.trim()}
         >
           {loading ? '发送中...' : '发送'}

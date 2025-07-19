@@ -246,9 +246,89 @@ button:disabled {
   font-size: 16px;
   border: 1px solid #ccc;
   border-radius: 8px;
-  resize: vertical; /* 🔧 允许手动拖动 */
+  resize: vertical; 
   overflow-y: auto;
-  height: auto; /* 🔧 支持自动扩展 */
+  height: auto; 
   line-height: 1.5;
   transition: height 0.2s ease;
+}
+.new-conversation-page {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.97);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  overflow: auto;
+}
+
+.new-conversation-page > div {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+/* 美化 NewConversationPage 输入控件 */
+.new-conversation-page label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 6px;
+  font-size: 15px;
+}
+
+.new-conversation-page input,
+.new-conversation-page select,
+.new-conversation-page textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  background-color: #fff;
+}
+
+.new-conversation-page textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+.new-conversation-page .form-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.new-conversation-page .form-row > div {
+  flex: 1;
+}
+
+.new-conversation-page .form-section {
+  margin-bottom: 20px;
+}
+
+.new-conversation-page .modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.new-conversation-page button {
+  padding: 10px 24px;
+  font-size: 16px;
+  border-radius: 8px;
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.new-conversation-page button:hover {
+  background-color: #155ab6;
 }

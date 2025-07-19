@@ -68,9 +68,9 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
   if (!visible) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal" style={{ maxWidth: 800 }}>
-        <h3>新建会话</h3>
+    <div className="new-conversation-page">
+      <div>
+        <h2 style={{ textAlign: 'center', marginBottom: 30 }}>新建会话</h2>
 
         {/* 第一行：角色 + 会话名 */}
         <div style={{ display: 'flex', gap: 12 }}>
