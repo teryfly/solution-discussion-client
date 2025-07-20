@@ -41,18 +41,16 @@ function ConversationLayout() {
   // 获取当前会话元信息
   const currentMeta = conversationList.find((c) => c.id === conversationId);
 
-  // 获取角色名，优先 location.state.role，其次 currentMeta.name
+  // 获取角色名：优先 currentMeta.assistanceRole，其次 location.state.role
   let roleName: string = '通用助手';
-  if (currentMeta?.name && ROLE_CONFIGS[currentMeta.name]) {
-    roleName = currentMeta.name;
+  if (currentMeta?.assistanceRole && ROLE_CONFIGS[currentMeta.assistanceRole]) {
+    roleName = currentMeta.assistanceRole;
   } else if (location.state && (location.state as any).role && ROLE_CONFIGS[(location.state as any).role]) {
     roleName = (location.state as any).role;
-  } else {
-    roleName = Object.keys(ROLE_CONFIGS)[0];
   }
   const roleDesc = ROLE_CONFIGS[roleName]?.desc || '';
 
-  // 关键：appendMessage 支持 replaceLast
+  // 添加新消息
   const appendMessage = (msg, replaceLast = false) => {
     setMessages(prev => {
       if (replaceLast && prev.length > 0) {
@@ -62,14 +60,13 @@ function ConversationLayout() {
     });
   };
 
-  // 用流式 hook 发送消息
+  // 使用流式发送消息 hook
   const { send, loading } = useChatStream(
     conversationId,
     model,
     appendMessage
   );
 
-  // 发送消息
   const handleSend = () => {
     if (input.trim() && !loading) {
       send(input);
@@ -93,7 +90,7 @@ function ConversationLayout() {
 
       {/* 聊天主区 */}
       <div className="chat-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {/* 角色说明，替换模型选择器 */}
+        {/* 会话顶部助手角色描述 */}
         <div className="chat-toolbar">
           <span style={{ fontWeight: 'bold', color: '#1a73e8' }}>{roleName}</span>
           <span style={{ marginLeft: 12 }}>{roleDesc}</span>
@@ -101,7 +98,7 @@ function ConversationLayout() {
 
         {/* 聊天内容区 */}
         <div className="chat-box-wrapper" style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-          <div className="scroll-arrow top" onClick={scrollToTop} style={{ position: 'absolute', top: 0, right: 8, zIndex: 2, cursor: 'pointer' }}>⬆</div>
+          <div className="scroll-arrow top" onClick={scrollToTop}>⬆</div>
           <div className="chat-box" ref={chatBoxRef} style={{ overflowY: 'auto', height: '100%', minHeight: 0 }}>
             <ChatBox
               messages={messages}
@@ -114,7 +111,7 @@ function ConversationLayout() {
               }}
             />
           </div>
-          <div className="scroll-arrow bottom" onClick={scrollToBottom} style={{ position: 'absolute', bottom: 0, right: 8, zIndex: 2, cursor: 'pointer' }}>⬇</div>
+          <div className="scroll-arrow bottom" onClick={scrollToBottom}>⬇</div>
         </div>
 
         {/* 输入区 */}

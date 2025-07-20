@@ -19,6 +19,8 @@ export default function useConversationList() {
           createdAt: conv.created_at,
           projectId: conv.project_id,
           projectName,
+          // 关键点：直接使用后端的 assistance_role 字段（可能为 ""/null/undefined/具体角色名）
+          assistanceRole: conv.assistance_role, 
         });
       }
     }
@@ -28,7 +30,9 @@ export default function useConversationList() {
 
   // 重命名
   const renameConversation = (id: string, newName: string) => {
-    setConversationList((prev) => prev.map(conv => conv.id === id ? { ...conv, name: newName } : conv));
+    setConversationList((prev) =>
+      prev.map(conv => conv.id === id ? { ...conv, name: newName } : conv)
+    );
   };
 
   // 删除（只前端过滤）
@@ -38,7 +42,9 @@ export default function useConversationList() {
 
   // 切换模型
   const updateModel = (id: string, newModel: string) => {
-    setConversationList(prev => prev.map(conv => conv.id === id ? { ...conv, model: newModel } : conv));
+    setConversationList(prev =>
+      prev.map(conv => conv.id === id ? { ...conv, model: newModel } : conv)
+    );
   };
 
   return {

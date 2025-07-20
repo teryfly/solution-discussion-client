@@ -1,4 +1,4 @@
-// ✅ 文件: ConversationList.tsx（支持项目分组 + 二列显示 + 上下文菜单）
+// ConversationList.tsx
 import React, { useState, useEffect } from 'react'; 
 import { ConversationMeta } from './types';
 import ContextMenu, { MenuItem } from './ContextMenu';
@@ -8,15 +8,13 @@ import {
   updateConversationName,
   updateConversationModel,
   deleteConversation,
-} from './api'; // ✅ import 必须
-
-
+} from './api';
 
 interface Props {
   conversations: ConversationMeta[];
   activeId: string;
   onSelect: (id: string) => void;
-  onNew: (options: { name?: string; model: string; system?: string; project_id: number }) => void;
+  onNew: (options: { name?: string; model: string; system?: string; project_id: number; project_name?: string }) => void;
   onRename: (id: string, newName: string) => void;
   onDelete: (id: string) => void;
   onModelChange: (id: string, newModel: string) => void;
@@ -41,11 +39,9 @@ const ConversationList: React.FC<Props> = ({
   useEffect(() => {
     const state = location.state as any;
     if (state?.highlightProject) {
-      setSelectedProject(state.highlightProject); // ✅ 自动选中创建的项目分组
+      setSelectedProject(state.highlightProject);
     }
   }, [location.state]);
-
-
 
   const grouped = conversations.reduce((acc, conv) => {
     const key = conv.projectName || '其它';
@@ -57,14 +53,6 @@ const ConversationList: React.FC<Props> = ({
   const handleContextMenu = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, id });
-  };
-
-  const confirmDelete = (id: string) => {
-    const conv = conversations.find(c => c.id === id);
-    const name = conv?.name || '未命名';
-    if (window.confirm(`确定要删除会话「${name}」吗？`)) {
-      onDelete(id);
-    }
   };
 
   const renderContextMenu = () => {
@@ -82,8 +70,8 @@ const ConversationList: React.FC<Props> = ({
             onClick: async () => {
               const name = prompt('请输入新名称', current?.name || '');
               if (name && name !== current?.name) {
-                await updateConversationName(id, name);      // ✅ 落库
-                onRename(id, name);                           // 更新前端状态
+                await updateConversationName(id, name);
+                onRename(id, name);
               }
             },
           },
@@ -93,8 +81,8 @@ const ConversationList: React.FC<Props> = ({
               label: model,
               onClick: async () => {
                 if (model !== current?.model) {
-                  await updateConversationModel(id, model);   // ✅ 落库
-                  onModelChange(id, model);                   // 更新前端状态
+                  await updateConversationModel(id, model);
+                  onModelChange(id, model);
                 }
               },
             })),
@@ -104,8 +92,8 @@ const ConversationList: React.FC<Props> = ({
             onClick: async () => {
               const name = current?.name || '未命名';
               if (window.confirm(`确定要删除会话「${name}」吗？`)) {
-                await deleteConversation(id);                // ✅ 落库
-                onDelete(id);                                // 更新前端状态
+                await deleteConversation(id);
+                onDelete(id);
               }
             },
           },
@@ -114,7 +102,7 @@ const ConversationList: React.FC<Props> = ({
     );
   };
 
-
+  // ⬇⬇⬇ 关键：传递 defaultProjectName 到新建弹窗
   return (
     <div className="conversation-list" style={{ display: 'flex' }}>
       {/* 左列：项目列表 */}
@@ -132,7 +120,12 @@ const ConversationList: React.FC<Props> = ({
             {project}
           </div>
         ))}
-        <button onClick={() => setShowNewModal(true)} style={{ marginTop: 12 }}>➕ 新建</button>
+        <button
+          onClick={() => setShowNewModal(true)}
+          style={{ marginTop: 12 }}
+        >
+          ➕ 新建
+        </button>
       </div>
 
       {/* 右列：该项目下会话 */}
@@ -154,7 +147,10 @@ const ConversationList: React.FC<Props> = ({
               }}
             >
               <div style={{ fontWeight: 500 }}>{conv.name || '未命名会话'}</div>
-              <div style={{ fontSize: 12, color: '#666' }}>模型: {conv.model}</div>
+              <div style={{ fontSize: 12, color: '#444' }}>
+                {conv.assistanceRole || '（无角色）'}
+              </div>
+              <div style={{ fontSize: 12, color: '#666' }}>{conv.model}</div>
             </li>
           ))}
         </ul>
@@ -166,12 +162,12 @@ const ConversationList: React.FC<Props> = ({
         visible={showNewModal}
         onClose={() => setShowNewModal(false)}
         onCreate={(options) => {
-          onNew(options); // 创建新会话
-          setSelectedProject(options.project_name || '其它'); // ✅ 自动切换到新建项目分组
+          onNew(options);
+          setSelectedProject(options.project_name || '其它');
         }}
         modelOptions={modelOptions}
+        defaultProjectName={selectedProject}   // 👈 新增传递
       />
-
     </div>
   );
 };

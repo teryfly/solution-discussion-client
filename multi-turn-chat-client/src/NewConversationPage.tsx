@@ -9,13 +9,15 @@ interface Project {
   name: string;
 }
 
-function generateDefaultName(role: string) {
+// 修改这里
+function generateDefaultName() {
   const now = new Date();
   const MM = String(now.getMonth() + 1).padStart(2, '0');
   const DD = String(now.getDate()).padStart(2, '0');
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
-  return `${role}${MM}${DD}${hh}${mm}`;
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${MM}${DD}${hh}${mm}${ss}`;
 }
 
 const NewConversationPage: React.FC = () => {
@@ -27,10 +29,9 @@ const NewConversationPage: React.FC = () => {
   const [modelList, setModelList] = useState<string[]>([]);
   const [projectId, setProjectId] = useState(0);
   const [role, setRole] = useState('需求分析师');
-  const [name, setName] = useState(generateDefaultName('需求分析师'));
+  const [name, setName] = useState(generateDefaultName());
   const [system, setSystem] = useState(ROLE_CONFIGS['需求分析师'].prompt);
 
-  // 工具函数：根据角色和模型选项返回最终下拉列表和选中项
   function getModelsAndSelect(role: string, modelOptions: string[]) {
     const defaultModel = ROLE_CONFIGS[role]?.model || '';
     let list = [...modelOptions];
@@ -60,7 +61,7 @@ const NewConversationPage: React.FC = () => {
 
   const handleRoleChange = (r: string) => {
     setRole(r);
-    setName(generateDefaultName(r));
+    setName(generateDefaultName());
     if (r === '通用助手') {
       setSystem('');
     } else {
@@ -77,7 +78,7 @@ const NewConversationPage: React.FC = () => {
       return;
     }
     const projectName = projects.find((p) => p.id === projectId)?.name || '其它';
-    const conversationId = await createConversation(system, projectId, name, model);
+    const conversationId = await createConversation(system, projectId, name, model, role);
 
     navigate(`/chat/${conversationId}`, {
       state: {

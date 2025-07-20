@@ -5,13 +5,15 @@ export async function createConversation(
   systemPrompt: string,
   projectId: number,
   name: string = '',
-  model: string = ''
+  model: string = '',
+  assistanceRole: string = ''
 ): Promise<string> {
   const body = {
     system_prompt: systemPrompt,
     project_id: projectId,
     name,
     model,
+    assistance_role: assistanceRole, 
   };
 
   const res = await fetch(`${BASE_URL}/chat/conversations`, {

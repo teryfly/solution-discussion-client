@@ -82,23 +82,26 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
     // 后续加载放到 useEffect
   };
 
+  // === 修正点：projectName 由 options.project_name 传入 ===
   const handleNewConversation = async (options: {
     name?: string;
     model: string;
     system?: string;
     project_id: number;
+    project_name?: string; // 新增，见 NewConversationModal
+    role?: string;
   }) => {
     const systemPrompt = options.system || DEFAULT_SYSTEM_PROMPT;
-    const id = await createConversation(systemPrompt, options.project_id, options.name, options.model);
+    const id = await createConversation(systemPrompt, options.project_id, options.name, options.model, options.role);
 
-    // 只构造当前新建的会话元数据
     const newMeta: ConversationMeta = {
       id,
       model: options.model,
       name: options.name,
       createdAt: new Date().toISOString(),
       projectId: options.project_id,
-      projectName: '其它',
+      projectName: options.project_name || '其它',  // ★★★ 这里用真实项目名 ★★★
+      assistanceRole: options.role || '通用助手',
     };
 
     setConversationList((prev) => [...prev, newMeta]);
@@ -114,7 +117,6 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
   };
 
   const handleDeleteConversation = async (id: string) => {
-    // 删除前保存当前输入
     if (conversationId) {
       inputCache.current[conversationId] = input;
     }
@@ -149,12 +151,10 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
     conversationList,
     refreshConversations,
     loadConversation: async (meta: ConversationMeta) => {
-      // 切换会话时自动暂存输入内容
       if (conversationId) {
         inputCache.current[conversationId] = input;
       }
       setConversationId(meta.id);
-      // 其余由 useEffect 触发
     },
     handleNewConversation,
     handleSelectConversation,

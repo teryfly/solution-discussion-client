@@ -12,6 +12,7 @@ export type ConversationMeta = {
   createdAt: string;
   projectId?: number;
   projectName?: string;
+  assistanceRole?: string; 
 };
 
 export type PlanCategory = {

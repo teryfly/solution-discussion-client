@@ -3,13 +3,15 @@ import React, { useEffect, useState } from 'react';
 import { getProjects } from './api';
 import { ROLE_CONFIGS } from './config';
 
-function generateDefaultName(role: string) {
+// 修改这里，返回 MMDDhhmmss 格式
+function generateDefaultName() {
   const now = new Date();
   const MM = String(now.getMonth() + 1).padStart(2, '0');
   const DD = String(now.getDate()).padStart(2, '0');
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
-  return `${role}${MM}${DD}${hh}${mm}`;
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${MM}${DD}${hh}${mm}${ss}`;
 }
 
 interface Props {
@@ -24,18 +26,18 @@ interface Props {
     role?: string;
   }) => void;
   modelOptions: string[];
+  defaultProjectName?: string;
 }
 
-const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, modelOptions }) => {
+const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, modelOptions, defaultProjectName }) => {
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
   const [role, setRole] = useState('需求分析师');
-  const [name, setName] = useState(generateDefaultName('需求分析师'));
+  const [name, setName] = useState(generateDefaultName());
   const [system, setSystem] = useState(ROLE_CONFIGS['需求分析师'].prompt);
   const [model, setModel] = useState(ROLE_CONFIGS['需求分析师'].model);
   const [projectId, setProjectId] = useState(0);
   const [modelList, setModelList] = useState<string[]>([]);
 
-  // 工具函数：根据角色和 modelOptions 计算最终下拉列表和选中项
   function getModelsAndSelect(role: string, modelOptions: string[]) {
     const defaultModel = ROLE_CONFIGS[role]?.model || '';
     let list = [...modelOptions];
@@ -47,27 +49,32 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
     return { list, value };
   }
 
-  // 初始化
   useEffect(() => {
     if (visible) {
       setRole('需求分析师');
-      setName(generateDefaultName('需求分析师'));
+      setName(generateDefaultName());
       setSystem(ROLE_CONFIGS['需求分析师'].prompt);
-      setProjectId(0);
-      getProjects().then(setProjects);
+      getProjects().then(_projects => {
+        setProjects(_projects);
 
-      // modelOptions 由父组件传入，需根据默认角色处理
+        let defaultId = 0;
+        if (defaultProjectName && defaultProjectName !== '其它') {
+          const found = _projects.find(p => p.name === defaultProjectName);
+          if (found) defaultId = found.id;
+        }
+        setProjectId(defaultId);
+      });
+
       const { list, value } = getModelsAndSelect('需求分析师', modelOptions);
       setModelList(list);
       setModel(value);
     }
     // eslint-disable-next-line
-  }, [visible, modelOptions]);
+  }, [visible, modelOptions, defaultProjectName]);
 
-  // 切换角色时处理模型下拉
   const handleRoleChange = (r: string) => {
     setRole(r);
-    setName(generateDefaultName(r));
+    setName(generateDefaultName());
     if (r !== '通用助手') {
       setSystem(ROLE_CONFIGS[r]?.prompt || '');
     } else {
