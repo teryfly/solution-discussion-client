@@ -1,19 +1,18 @@
 // ConversationLayout.tsx
 import React, { useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import ConversationList from './ConversationList';
 import ChatBox from './ChatBox';
 import ChatInput from './ChatInput';
-import ModelSelector from './ModelSelector';
 import useConversations from './hooks/useConversations';
 import useChatStream from './useChatStream';
+import { ROLE_CONFIGS } from './config';
 
 function ConversationLayout() {
-  const navigate = useNavigate();
   const params = useParams();
+  const location = useLocation();
   const chatBoxRef = useRef<HTMLDivElement>(null);
 
-  // 用自定义 Hook 管理会话、消息、模型等状态
   const {
     conversationId,
     setConversationId,
@@ -30,14 +29,28 @@ function ConversationLayout() {
     handleRenameConversation,
     handleDeleteConversation,
     handleModelChange,
-    input,          // 用 hook 里的 input
-    setInput,       // 用 hook 里的 setInput
+    input,
+    setInput,
     toggleCollapse,
     copyMessage,
     saveMessage,
     scrollToBottom,
     scrollToTop,
-  } = useConversations({ chatBoxRef, params, navigate });
+  } = useConversations({ chatBoxRef, params });
+
+  // 获取当前会话元信息
+  const currentMeta = conversationList.find((c) => c.id === conversationId);
+
+  // 获取角色名，优先 location.state.role，其次 currentMeta.name
+  let roleName: string = '通用助手';
+  if (currentMeta?.name && ROLE_CONFIGS[currentMeta.name]) {
+    roleName = currentMeta.name;
+  } else if (location.state && (location.state as any).role && ROLE_CONFIGS[(location.state as any).role]) {
+    roleName = (location.state as any).role;
+  } else {
+    roleName = Object.keys(ROLE_CONFIGS)[0];
+  }
+  const roleDesc = ROLE_CONFIGS[roleName]?.desc || '';
 
   // 关键：appendMessage 支持 replaceLast
   const appendMessage = (msg, replaceLast = false) => {
@@ -64,9 +77,6 @@ function ConversationLayout() {
     }
   };
 
-  // 获取当前会话元信息，用于“发送到”功能
-  const currentMeta = conversationList.find((c) => c.id === conversationId);
-
   return (
     <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
       {/* 会话列表侧栏 */}
@@ -83,8 +93,11 @@ function ConversationLayout() {
 
       {/* 聊天主区 */}
       <div className="chat-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {/* 模型选择器 */}
-        <ModelSelector value={model} options={modelOptions} onChange={setModel} />
+        {/* 角色说明，替换模型选择器 */}
+        <div className="chat-toolbar">
+          <span style={{ fontWeight: 'bold', color: '#1a73e8' }}>{roleName}</span>
+          <span style={{ marginLeft: 12 }}>{roleDesc}</span>
+        </div>
 
         {/* 聊天内容区 */}
         <div className="chat-box-wrapper" style={{ position: 'relative', flex: 1, minHeight: 0 }}>

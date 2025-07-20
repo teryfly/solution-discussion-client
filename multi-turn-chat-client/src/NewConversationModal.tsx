@@ -1,7 +1,7 @@
 // NewConversationModal.tsx
 import React, { useEffect, useState } from 'react';
 import { getProjects } from './api';
-import { ROLE_PROMPTS } from './config';
+import { ROLE_CONFIGS } from './config';
 
 function generateDefaultName(role: string) {
   const now = new Date();
@@ -21,36 +21,61 @@ interface Props {
     system?: string;
     project_id: number;
     project_name?: string;
+    role?: string;
   }) => void;
   modelOptions: string[];
 }
 
 const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, modelOptions }) => {
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
-  const [model, setModel] = useState('');
-  const [projectId, setProjectId] = useState(0);
   const [role, setRole] = useState('需求分析师');
   const [name, setName] = useState(generateDefaultName('需求分析师'));
-  const [system, setSystem] = useState(ROLE_PROMPTS['需求分析师']);
+  const [system, setSystem] = useState(ROLE_CONFIGS['需求分析师'].prompt);
+  const [model, setModel] = useState(ROLE_CONFIGS['需求分析师'].model);
+  const [projectId, setProjectId] = useState(0);
+  const [modelList, setModelList] = useState<string[]>([]);
 
+  // 工具函数：根据角色和 modelOptions 计算最终下拉列表和选中项
+  function getModelsAndSelect(role: string, modelOptions: string[]) {
+    const defaultModel = ROLE_CONFIGS[role]?.model || '';
+    let list = [...modelOptions];
+    let value = defaultModel || (modelOptions[0] || '');
+    if (defaultModel && !modelOptions.includes(defaultModel)) {
+      list = [defaultModel, ...modelOptions];
+      value = defaultModel;
+    }
+    return { list, value };
+  }
+
+  // 初始化
   useEffect(() => {
     if (visible) {
       setRole('需求分析师');
       setName(generateDefaultName('需求分析师'));
-      setSystem(ROLE_PROMPTS['需求分析师']);
-      setModel(modelOptions[0] || '');
+      setSystem(ROLE_CONFIGS['需求分析师'].prompt);
+      setProjectId(0);
       getProjects().then(setProjects);
+
+      // modelOptions 由父组件传入，需根据默认角色处理
+      const { list, value } = getModelsAndSelect('需求分析师', modelOptions);
+      setModelList(list);
+      setModel(value);
     }
+    // eslint-disable-next-line
   }, [visible, modelOptions]);
 
+  // 切换角色时处理模型下拉
   const handleRoleChange = (r: string) => {
     setRole(r);
     setName(generateDefaultName(r));
     if (r !== '通用助手') {
-      setSystem(ROLE_PROMPTS[r]);
+      setSystem(ROLE_CONFIGS[r]?.prompt || '');
     } else {
       setSystem('');
     }
+    const { list, value } = getModelsAndSelect(r, modelOptions);
+    setModelList(list);
+    setModel(value);
   };
 
   const handleCreate = () => {
@@ -61,6 +86,7 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
       system,
       project_id: projectId,
       project_name: projectName,
+      role,
     });
     onClose();
   };
@@ -71,8 +97,6 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
     <div className="new-conversation-page">
       <div>
         <h2 style={{ textAlign: 'center', marginBottom: 30 }}>新建会话</h2>
-
-        {/* 第一行：角色 + 会话名 */}
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label>助手角色：</label>
@@ -80,7 +104,7 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
               value={role}
               onChange={(e) => handleRoleChange(e.target.value)}
             >
-              {Object.keys(ROLE_PROMPTS).map((r) => (
+              {Object.keys(ROLE_CONFIGS).map((r) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
@@ -95,8 +119,6 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
             />
           </div>
         </div>
-
-        {/* 第二行：项目 + 模型 */}
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label>相关项目：</label>
@@ -116,9 +138,9 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
             <label>选择模型：</label>
             <select
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={e => setModel(e.target.value)}
             >
-              {modelOptions.map((m) => (
+              {modelList.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -126,8 +148,6 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
             </select>
           </div>
         </div>
-
-        {/* 第三行：仅通用助手时显示 system prompt */}
         {role === '通用助手' && (
           <div>
             <label>System Prompt：</label>
@@ -138,8 +158,6 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
             />
           </div>
         )}
-
-        {/* 操作按钮 */}
         <div className="modal-actions">
           <button onClick={handleCreate}>创建</button>
           <button onClick={onClose}>取消</button>

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createConversation, getProjects, getModels } from './api';
-import { ROLE_PROMPTS } from './config';
+import { ROLE_CONFIGS } from './config';
 
 interface Project {
   id: number;
@@ -24,10 +24,23 @@ const NewConversationPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [models, setModels] = useState<string[]>([]);
   const [model, setModel] = useState('');
+  const [modelList, setModelList] = useState<string[]>([]);
   const [projectId, setProjectId] = useState(0);
   const [role, setRole] = useState('需求分析师');
   const [name, setName] = useState(generateDefaultName('需求分析师'));
-  const [system, setSystem] = useState(ROLE_PROMPTS['需求分析师']);
+  const [system, setSystem] = useState(ROLE_CONFIGS['需求分析师'].prompt);
+
+  // 工具函数：根据角色和模型选项返回最终下拉列表和选中项
+  function getModelsAndSelect(role: string, modelOptions: string[]) {
+    const defaultModel = ROLE_CONFIGS[role]?.model || '';
+    let list = [...modelOptions];
+    let value = defaultModel || (modelOptions[0] || '');
+    if (defaultModel && !modelOptions.includes(defaultModel)) {
+      list = [defaultModel, ...modelOptions];
+      value = defaultModel;
+    }
+    return { list, value };
+  }
 
   useEffect(() => {
     getProjects()
@@ -37,9 +50,12 @@ const NewConversationPage: React.FC = () => {
     getModels()
       .then((res) => {
         setModels(res);
-        if (res.length > 0) setModel(res[0]);
+        const { list, value } = getModelsAndSelect('需求分析师', res);
+        setModelList(list);
+        setModel(value);
       })
       .catch((err) => console.error('加载模型失败:', err));
+    // eslint-disable-next-line
   }, []);
 
   const handleRoleChange = (r: string) => {
@@ -48,8 +64,11 @@ const NewConversationPage: React.FC = () => {
     if (r === '通用助手') {
       setSystem('');
     } else {
-      setSystem(ROLE_PROMPTS[r]);
+      setSystem(ROLE_CONFIGS[r]?.prompt || '');
     }
+    const { list, value } = getModelsAndSelect(r, models);
+    setModelList(list);
+    setModel(value);
   };
 
   const handleCreate = async () => {
@@ -63,96 +82,88 @@ const NewConversationPage: React.FC = () => {
     navigate(`/chat/${conversationId}`, {
       state: {
         highlightProject: projectName,
+        role,
       },
     });
   };
 
   return (
-  <div className="new-conversation-page">
-    <div>
-      <h2 style={{ textAlign: 'center', marginBottom: 30 }}>新建会话</h2>
-
-      {/* 第一行：角色 + 会话名 */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
-        <div style={{ flex: 1 }}>
-          <label>助手角色：</label>
-          <select
-            value={role}
-            onChange={(e) => handleRoleChange(e.target.value)}
-            style={{ width: '100%' }}
-          >
-            {Object.keys(ROLE_PROMPTS).map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
+    <div className="new-conversation-page">
+      <div>
+        <h2 style={{ textAlign: 'center', marginBottom: 30 }}>新建会话</h2>
+        <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
+          <div style={{ flex: 1 }}>
+            <label>助手角色：</label>
+            <select
+              value={role}
+              onChange={(e) => handleRoleChange(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              {Object.keys(ROLE_CONFIGS).map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label>会话名：</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
         </div>
-        <div style={{ flex: 1 }}>
-          <label>会话名：</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={{ width: '100%' }}
-          />
+        <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
+          <div style={{ flex: 1 }}>
+            <label>相关项目：</label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(Number(e.target.value))}
+              style={{ width: '100%' }}
+            >
+              <option value={0}>其它</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label>选择模型：</label>
+            <select
+              value={model}
+              onChange={e => setModel(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              {modelList.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
-
-      {/* 第二行：项目 + 模型 */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
-        <div style={{ flex: 1 }}>
-          <label>相关项目：</label>
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(Number(e.target.value))}
-            style={{ width: '100%' }}
-          >
-            <option value={0}>其它</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+        {role === '通用助手' && (
+          <div style={{ marginBottom: 20 }}>
+            <label>System Prompt：</label>
+            <textarea
+              rows={4}
+              value={system}
+              onChange={(e) => setSystem(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 20 }}>
+          <button onClick={handleCreate}>✅ 创建</button>
+          <button onClick={() => navigate(-1)}>取消</button>
         </div>
-        <div style={{ flex: 1 }}>
-          <label>选择模型：</label>
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            style={{ width: '100%' }}
-          >
-            {models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* 第三行：仅通用助手时显示 prompt 输入框 */}
-      {role === '通用助手' && (
-        <div style={{ marginBottom: 20 }}>
-          <label>System Prompt：</label>
-          <textarea
-            rows={4}
-            value={system}
-            onChange={(e) => setSystem(e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </div>
-      )}
-
-      {/* 操作按钮 */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 20 }}>
-        <button onClick={handleCreate}>✅ 创建</button>
-        <button onClick={() => navigate(-1)}>取消</button>
       </div>
     </div>
-  </div>
-  
   );
 };
 
