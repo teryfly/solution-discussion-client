@@ -1,5 +1,5 @@
 // ConversationLayout.tsx
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import ConversationList from './ConversationList';
 import ChatBox from './ChatBox';
@@ -37,6 +37,25 @@ function ConversationLayout() {
     scrollToBottom,
     scrollToTop,
   } = useConversations({ chatBoxRef, params });
+
+  // 自动选中第一个分组下第一个会话
+  useEffect(() => {
+    if (!conversationId && conversationList.length > 0) {
+      // 分组
+      const grouped = conversationList.reduce((acc, conv) => {
+        const key = conv.projectName || '其它';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(conv);
+        return acc;
+      }, {} as Record<string, typeof conversationList>);
+
+      const firstProject = Object.keys(grouped)[0];
+      const firstConv = grouped[firstProject]?.[0];
+      if (firstConv) {
+        handleSelectConversation(firstConv.id);
+      }
+    }
+  }, [conversationId, conversationList]); // 只要有会话且未选中时自动选
 
   // 获取当前会话元信息
   const currentMeta = conversationList.find((c) => c.id === conversationId);

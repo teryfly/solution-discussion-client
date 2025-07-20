@@ -33,22 +33,38 @@ const ConversationList: React.FC<Props> = ({
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string>('其它');
+  const [selectedProject, setSelectedProject] = useState<string | undefined>(undefined);
 
   const location = useLocation();
-  useEffect(() => {
-    const state = location.state as any;
-    if (state?.highlightProject) {
-      setSelectedProject(state.highlightProject);
-    }
-  }, [location.state]);
 
+  // 分组（projectName->数组）
   const grouped = conversations.reduce((acc, conv) => {
     const key = conv.projectName || '其它';
     if (!acc[key]) acc[key] = [];
     acc[key].push(conv);
     return acc;
   }, {} as Record<string, ConversationMeta[]>);
+
+  // 监听 location.state 的高亮
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.highlightProject && Object.keys(grouped).includes(state.highlightProject)) {
+      setSelectedProject(state.highlightProject);
+    }
+  // eslint-disable-next-line
+  }, [location.state, Object.keys(grouped).join(',')]);
+
+  // 关键：页面刷新或 conversations 变化时，自动选中第一个分组
+  useEffect(() => {
+    const groupNames = Object.keys(grouped);
+    if (!selectedProject && groupNames.length > 0) {
+      setSelectedProject(groupNames[0]);
+    } else if (selectedProject && !groupNames.includes(selectedProject)) {
+      // 若当前选中的分组已不存在，自动切到第一个
+      setSelectedProject(groupNames[0] || undefined);
+    }
+  // eslint-disable-next-line
+  }, [conversations]);
 
   const handleContextMenu = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -102,7 +118,6 @@ const ConversationList: React.FC<Props> = ({
     );
   };
 
-  // ⬇⬇⬇ 关键：传递 defaultProjectName 到新建弹窗
   return (
     <div className="conversation-list" style={{ display: 'flex' }}>
       {/* 左列：项目列表 */}
@@ -131,28 +146,29 @@ const ConversationList: React.FC<Props> = ({
       {/* 右列：该项目下会话 */}
       <div style={{ flex: 1, paddingLeft: 10 }}>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {grouped[selectedProject]?.map((conv) => (
-            <li
-              key={conv.id}
-              className={conv.id === activeId ? 'active' : ''}
-              onClick={() => onSelect(conv.id)}
-              onContextMenu={(e) => handleContextMenu(e, conv.id)}
-              style={{
-                padding: '8px',
-                borderRadius: 6,
-                marginBottom: 8,
-                backgroundColor: conv.id === activeId ? '#e6f0ff' : '#f6f6f6',
-                border: '1px solid #ccc',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ fontWeight: 500 }}>{conv.name || '未命名会话'}</div>
-              <div style={{ fontSize: 12, color: '#444' }}>
-                {conv.assistanceRole || '（无角色）'}
-              </div>
-              <div style={{ fontSize: 12, color: '#666' }}>{conv.model}</div>
-            </li>
-          ))}
+          {selectedProject &&
+            grouped[selectedProject]?.map((conv) => (
+              <li
+                key={conv.id}
+                className={conv.id === activeId ? 'active' : ''}
+                onClick={() => onSelect(conv.id)}
+                onContextMenu={(e) => handleContextMenu(e, conv.id)}
+                style={{
+                  padding: '8px',
+                  borderRadius: 6,
+                  marginBottom: 8,
+                  backgroundColor: conv.id === activeId ? '#e6f0ff' : '#f6f6f6',
+                  border: '1px solid #ccc',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ fontWeight: 500 }}>{conv.name || '未命名会话'}</div>
+                <div style={{ fontSize: 12, color: '#444' }}>
+                  {conv.assistanceRole || '（无角色）'}
+                </div>
+                <div style={{ fontSize: 12, color: '#666' }}>{conv.model}</div>
+              </li>
+            ))}
         </ul>
       </div>
 
@@ -163,10 +179,10 @@ const ConversationList: React.FC<Props> = ({
         onClose={() => setShowNewModal(false)}
         onCreate={(options) => {
           onNew(options);
-          setSelectedProject(options.project_name || '其它');
+          setSelectedProject(options.project_name || Object.keys(grouped)[0] || '其它');
         }}
         modelOptions={modelOptions}
-        defaultProjectName={selectedProject}   // 👈 新增传递
+        defaultProjectName={selectedProject}
       />
     </div>
   );
