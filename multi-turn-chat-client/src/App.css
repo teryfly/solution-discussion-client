@@ -70,9 +70,7 @@ h2 {
   color: #777;
 }
 
-.chat-msg.system {
-  display: none !important;
-}
+
 
 .chat-msg .content {
   white-space: pre-wrap;

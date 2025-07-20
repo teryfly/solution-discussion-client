@@ -20,13 +20,12 @@ const ChatInput: React.FC<ChatInputProps> = ({ value, onChange, onSend, loading 
     }
   }, [value]);
 
-  // 在发送后重置高度
+  // 发送消息后清空输入 & 重置高度
   const handleSend = () => {
-    onSend(); // 触发外部逻辑
+    onSend();
 
-    // ✅ 重置高度
     if (textareaRef.current) {
-      textareaRef.current.style.height = '60px';
+      textareaRef.current.style.height = '60px'; // 初始高度
     }
   };
 

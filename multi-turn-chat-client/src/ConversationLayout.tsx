@@ -1,12 +1,11 @@
 // ConversationLayout.tsx
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ConversationList from './ConversationList';
 import ChatBox from './ChatBox';
 import ChatInput from './ChatInput';
 import ModelSelector from './ModelSelector';
 import useConversations from './hooks/useConversations';
-import usePlanCategories from './hooks/usePlanCategories';
 import useChatStream from './useChatStream';
 
 function ConversationLayout() {
@@ -31,14 +30,14 @@ function ConversationLayout() {
     handleRenameConversation,
     handleDeleteConversation,
     handleModelChange,
+    input,          // 用 hook 里的 input
+    setInput,       // 用 hook 里的 setInput
     toggleCollapse,
     copyMessage,
     saveMessage,
     scrollToBottom,
     scrollToTop,
   } = useConversations({ chatBoxRef, params, navigate });
-
-  const [input, setInput] = useState('');
 
   // 关键：appendMessage 支持 replaceLast
   const appendMessage = (msg, replaceLast = false) => {

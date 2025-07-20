@@ -1,5 +1,5 @@
-// useConversations.ts
-import { useEffect, useState } from 'react';
+// hooks/useConversations.ts
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useConversationList from './useConversationList';
 import useMessages from './useMessages';
@@ -8,11 +8,28 @@ import useInput from './useInput';
 import { getModels, createConversation } from '../api';
 import { Message, ConversationMeta } from '../types';
 
-const DEFAULT_SYSTEM_PROMPT = '你是一个系统分析师，擅长帮助用户的优化关于软件设计方案的prompt。用户将输入一个软件设计需求/思路的 prompt, 请分析 prompt 的中的描述，判断需求是否明确、思路是否清晰、设计是否合理。如果有不明确、不清楚或不合理的地方就要求用户在下一轮对话中进一步解释、明确或更正。如果你有更好的建议或意见也请提出来让用户确认是否采纳。如果没有问题或建议，则输出优化后的完整版本的提示词（only prompt，nothing else), 以“设计一个XXX软件程序，从整体项目的结构，到每一个细节，输出一个开发设计文档，程序员将根据你输出的文档进行编码，这个文档是他编码工作的唯一信息来源。1、开发语言与环境 ...  2、功能要求...” 开头。';
+const DEFAULT_SYSTEM_PROMPT = '你是一个通用助手，能够处理各种任务和问题。';
 
 export default function useConversations({ chatBoxRef, params, navigate }: any) {
-  const { conversationList, setConversationList, refreshConversations, renameConversation, removeConversation, updateModel } = useConversationList();
-  const { messages, setMessages, loadMessages, collapsePrevious, toggleCollapse, copyMessage, saveMessage } = useMessages();
+  const {
+    conversationList,
+    setConversationList,
+    refreshConversations,
+    renameConversation,
+    removeConversation,
+    updateModel,
+  } = useConversationList();
+
+  const {
+    messages,
+    setMessages,
+    loadMessages,
+    collapsePrevious,
+    toggleCollapse,
+    copyMessage,
+    saveMessage,
+  } = useMessages();
+
   const { input, setInput } = useInput();
   const { scrollToBottom, scrollToTop } = useScroll(chatBoxRef);
 
@@ -20,43 +37,62 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
   const [model, setModel] = useState('');
   const [modelOptions, setModelOptions] = useState<string[]>([]);
 
-  // 初始加载模型和会话
+  // ✅ 缓存每个会话的输入内容
+  const inputCache = useRef<Record<string, string>>({});
+
+  // 初始加载模型 & 会话列表
   useEffect(() => {
     getModels().then(setModelOptions);
     refreshConversations();
     if (params.conversationId) {
       setConversationId(params.conversationId);
     }
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 路由变更后自动加载
+  // 会话ID变更时，自动加载消息和回填输入内容
   useEffect(() => {
-    if (conversationId) {
-      const found = conversationList.find(c => c.id === conversationId);
-      if (found) loadConversation(found);
+    if (!conversationId) {
+      setMessages([]);
+      setInput('');
+      return;
     }
-    // eslint-disable-next-line
-  }, [conversationId]);
+    const found = conversationList.find((c) => c.id === conversationId);
+    if (found) {
+      setModel(found.model);
+      loadMessages(found.id);
+      scrollToBottom();
 
-  // 加载会话消息
-  const loadConversation = async (meta: ConversationMeta) => {
-    setConversationId(meta.id);
-    setModel(meta.model);
-    await loadMessages(meta.id);
-    scrollToBottom();
+      // ✅ 切换时自动回填缓存输入，没有则清空
+      if (Object.prototype.hasOwnProperty.call(inputCache.current, found.id)) {
+        setInput(inputCache.current[found.id]);
+      } else {
+        setInput('');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, conversationList]);
+
+  // 设置当前会话并保存前一个的输入内容
+  const setConversationIdAndLoad = async (id: string) => {
+    if (conversationId) {
+      inputCache.current[conversationId] = input; // ✅ 保存旧的输入内容
+    }
+    setConversationId(id);
+    // 后续加载放到 useEffect
   };
 
-  const handleNewConversation = async (options: { name?: string; model: string; system?: string; project_id: number }) => {
+  const handleNewConversation = async (options: {
+    name?: string;
+    model: string;
+    system?: string;
+    project_id: number;
+  }) => {
     const systemPrompt = options.system || DEFAULT_SYSTEM_PROMPT;
-    const id = await createConversation(
-      systemPrompt,
-      options.project_id,
-      options.name,
-      options.model
-    );
-    await refreshConversations();
-    const newMeta = {
+    const id = await createConversation(systemPrompt, options.project_id, options.name, options.model);
+
+    // 只构造当前新建的会话元数据
+    const newMeta: ConversationMeta = {
       id,
       model: options.model,
       name: options.name,
@@ -64,22 +100,36 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
       projectId: options.project_id,
       projectName: '其它',
     };
-    loadConversation(newMeta);
+
+    setConversationList((prev) => [...prev, newMeta]);
+    await setConversationIdAndLoad(id);
   };
 
   const handleSelectConversation = async (id: string) => {
-    const found = conversationList.find(c => c.id === id);
-    if (found) await loadConversation(found);
+    await setConversationIdAndLoad(id);
   };
 
-  const handleRenameConversation = (id: string, newName: string) => renameConversation(id, newName);
+  const handleRenameConversation = (id: string, newName: string) => {
+    renameConversation(id, newName);
+  };
 
   const handleDeleteConversation = async (id: string) => {
+    // 删除前保存当前输入
+    if (conversationId) {
+      inputCache.current[conversationId] = input;
+    }
+
     await refreshConversations();
+
     if (id === conversationId) {
-      const updated = conversationList.filter(c => c.id !== id);
-      if (updated.length > 0) loadConversation(updated[0]);
-      else setMessages([]);
+      const updated = conversationList.filter((c) => c.id !== id);
+      if (updated.length > 0) {
+        await setConversationIdAndLoad(updated[0].id);
+      } else {
+        setMessages([]);
+        setInput('');
+        setConversationId('');
+      }
     }
   };
 
@@ -98,7 +148,14 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
     modelOptions,
     conversationList,
     refreshConversations,
-    loadConversation,
+    loadConversation: async (meta: ConversationMeta) => {
+      // 切换会话时自动暂存输入内容
+      if (conversationId) {
+        inputCache.current[conversationId] = input;
+      }
+      setConversationId(meta.id);
+      // 其余由 useEffect 触发
+    },
     handleNewConversation,
     handleSelectConversation,
     handleRenameConversation,
