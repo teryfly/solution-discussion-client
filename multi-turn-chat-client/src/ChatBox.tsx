@@ -4,6 +4,7 @@ import { Message } from './types';
 import './App.css';
 import ContextMenu, { MenuItem } from './ContextMenu';
 import usePlanCategories from './hooks/usePlanCategories';
+import { COLLAPSE_LENGTH } from './config';
 
 interface ChatBoxProps {
   messages: Message[];
@@ -38,7 +39,6 @@ const ChatBox: React.FC<ChatBoxProps> = ({
       return;
     }
     try {
-      // createPlanDocument 已经在 api.ts 实现
       const { createPlanDocument } = await import('./api');
       await createPlanDocument({
         project_id: conversationMeta.projectId,
@@ -65,7 +65,6 @@ const ChatBox: React.FC<ChatBoxProps> = ({
       ? { label: '展开', onClick: () => onToggle(index) }
       : { label: '折叠', onClick: () => onToggle(index) };
 
-    // 发送到菜单
     const sendToMenu: MenuItem = {
       label: '发送到',
       submenu: (plan.categories || []).map((cat) => ({
@@ -86,6 +85,15 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     });
   };
 
+  // 判断是否为等待动画 assistant 气泡
+  function isWaitingTyping(msg: Message) {
+    return (
+      msg.role === 'assistant' &&
+      typeof msg.content === 'string' &&
+      msg.content.startsWith('<span class="waiting-typing">')
+    );
+  }
+
   return (
     <div>
       {messages.map((msg, index) => (
@@ -96,8 +104,10 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         >
           <div className="content">
             {msg.collapsed
-              ? msg.content.split('\n')[0].slice(0, 60) + '...[右键展开]'
-              : msg.content}
+              ? msg.content.slice(0, COLLAPSE_LENGTH) + '...[右键展开]'
+              : isWaitingTyping(msg)
+                ? <span dangerouslySetInnerHTML={{ __html: msg.content }} />
+                : msg.content}
           </div>
         </div>
       ))}

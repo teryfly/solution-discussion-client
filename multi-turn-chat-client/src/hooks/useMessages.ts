@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { getMessages } from '../api';
 import { Message } from '../types';
 import { trimAssistantReplay } from '../utils/trimAssistantReplay';
+import { COLLAPSE_LENGTH } from '../config';
 
 export default function useMessages() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -11,31 +12,31 @@ export default function useMessages() {
   const loadMessages = async (conversationId: string) => {
     setMessages([{ role: 'system', content: '加载中...', collapsed: false }]);
     const history = await getMessages(conversationId);
-    const collapsedHistory = history.map((msg, idx) => {
-      const tooLong = msg.content.length > 100;
-      const content = msg.role === 'assistant'
-        ? trimAssistantReplay(msg.content)
-        : msg.content;
+
+    // 全部按配置折叠长度处理
+    const collapsedHistory = history.map((msg) => {
+      const tooLong = msg.content.length > COLLAPSE_LENGTH;
+      const content =
+        msg.role === 'assistant' ? trimAssistantReplay(msg.content) : msg.content;
       return {
         ...msg,
         content,
-        collapsed: idx < history.length - 2 && tooLong,
+        collapsed: tooLong,
       };
     });
     setMessages(collapsedHistory);
     return collapsedHistory;
   };
 
-  // 折叠
+  // 折叠全部（不常用，保留接口）
   const collapsePrevious = () => {
-    setMessages((prev) => {
-      const n = prev.length;
-      return prev.map((msg, i) =>
-        i < n - 2 && msg.content.length > 100
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.content.length > COLLAPSE_LENGTH
           ? { ...msg, collapsed: true }
           : msg
-      );
-    });
+      )
+    );
   };
 
   // 展开/折叠切换
@@ -87,6 +88,6 @@ export default function useMessages() {
     toggleCollapse,
     copyMessage,
     saveMessage,
-    appendMessage,   // <-- 记得导出
+    appendMessage,
   };
 }

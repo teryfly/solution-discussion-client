@@ -29,8 +29,8 @@ export default function useChatStream(
     const sendOne = async (prompt: string) => {
       let streamedReply = '';
 
-      // 新开 assistant 气泡，内容为空
-      appendMessage({ role: 'assistant', content: '', collapsed: false });
+// 1. 先插入等待动画气泡
+      appendMessage({ role: 'assistant', content: '<span class="waiting-typing">正在思考……</span>', collapsed: false });
 
       try {
         await sendMessageStream(

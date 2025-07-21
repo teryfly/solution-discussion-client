@@ -330,3 +330,25 @@ button:disabled {
 .new-conversation-page button:hover {
   background-color: #155ab6;
 }
+.waiting-typing {
+  display: inline-block;
+  color: #888;
+  font-style: italic;
+  position: relative;
+}
+.waiting-typing::after {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  margin-left: 3px;
+  border-radius: 50%;
+  border: 2px solid #bbb;
+  border-top: 2px solid #1a73e8;
+  animation: waiting-spin 1s linear infinite;
+}
+@keyframes waiting-spin {
+  0% { transform: rotate(0deg);}
+  100% {transform: rotate(360deg);}
+}
