@@ -352,3 +352,16 @@ button:disabled {
   0% { transform: rotate(0deg);}
   100% {transform: rotate(360deg);}
 }
+/* 新增：大气泡左右错位效果 */
+.chat-group-bubble.user {
+  margin-left: auto;
+  margin-right: 0;
+  max-width: 75%;
+  background: #f2f6fb;
+}
+.chat-group-bubble.assistant {
+  margin-left: 0;
+  margin-right: auto;
+  max-width: 78%;
+  background: #fafbfc;
+}
