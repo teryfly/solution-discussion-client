@@ -1,5 +1,8 @@
 // config.ts
 
+/** 自动 continue 最大轮数，防止死循环 */
+export const MAX_AUTO_CONTINUE_ROUNDS = 25;
+
 /** ✅ 后端服务基础地址 */
 export const BASE_URL = 'http://localhost:8000/v1';
 
@@ -7,7 +10,7 @@ export const BASE_URL = 'http://localhost:8000/v1';
 export const API_KEY = 'sk-test';
 
 /** ✅ 角色预置配置：包含 System Prompt、默认模型和角色说明 */
-const USER_FEADBAK= '如果有不明确、不清楚或不合理的地方就要求用户在下一轮对话中进一步解释、明确或更正。如果你有更好的建议或意见也请提出来让用户确认是否采纳。';
+const USER_FEADBAK= '如果有不明确、不清楚或不合理的地方就要求用户在下一轮对话中进一步解释、明确或更正。如果你有更好的建议或意见也请提出来让用户确认是否采纳。当且仅当输出的内容可能超出你单条消息输出长度限制时，请提前在最后一行加上 [to be continue]，等待用户的继续指令后继续输出。如果需要用户补充任何信息或确认，则不要加上 [to be continue]。';
 export const ROLE_CONFIGS: Record<string, {
   prompt: string;
   model: string;
@@ -49,7 +52,18 @@ export const ROLE_CONFIGS: Record<string, {
     "desc": "请提供架构设计文档及模块说明。目标是输出《详细设计说明书》。"
   },
   "开发工程师": {
-    "prompt": "你编写生产级代码。根据设计文档：1) 实现功能模块 2) 编写单元测试 3) 遵循编码规范 4) 输出可部署组件。需持续重构优化代码。"+  USER_FEADBAK,
+    "prompt": `
+You are a advanced programmer. User will input a Coding Task. Please provide a implementation plan with multiple implementation steps sequentially, and each step strictly following the "Output Format" without all non-essential procedures including environment configuration and test artifacts, retaining only core code and project file structure included in README.md.
+Since the returned content may be too long, please output the overall plan content  step by step.
+Each time, output one Step, with the first line starting with Step [X/Y] - Goal of this step, where X is the current PART number and Y is the total number of PARTS, and the last line being [to be continue] except the last PART.
+Do not add any explanatory text, and do not ask me any questions.
+--- Output Format ---
+Clearly indicate the step number with explanation, e.g. Step [1/20] - Initial Project Structure, create all the dir.
+Steps MUST be divided by six-dash lines: ------
+Specify the Action, which must be one of: execute shell command, create/delete folder, file operation (create, update, delete). E.g.: Update file.
+Specify the file relative path (except for shell commands), e.g.: FormulaComputer/backend/src/main.py
+Provide the complete bash command or the complete code of the relevant file, For the detailed code in each file, DO NOT omit any code. It is absolutely unacceptable to only provide a segment of example code and then add comments such as "the rest can be implemented following the above pattern.".
+A code file should not exceed 150 lines, or it should be refactored into multiple files.`,
     "model": "GPT-4.1",
     "desc": "请提供详细设计文档及开发任务。目标是输出可部署的详细代码文件。",
   },

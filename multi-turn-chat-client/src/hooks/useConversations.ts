@@ -1,16 +1,15 @@
 // hooks/useConversations.ts
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import useConversationList from './useConversationList';
 import useMessages from './useMessages';
 import useScroll from './useScroll';
 import useInput from './useInput';
 import { getModels, createConversation } from '../api';
-import { Message, ConversationMeta } from '../types';
+import { ConversationMeta } from '../types';
 
 const DEFAULT_SYSTEM_PROMPT = '你是一个通用助手，能够处理各种任务和问题。';
 
-export default function useConversations({ chatBoxRef, params, navigate }: any) {
+export default function useConversations({ chatBoxRef, params }: any) {
   const {
     conversationList,
     setConversationList,
@@ -28,6 +27,7 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
     toggleCollapse,
     copyMessage,
     saveMessage,
+    appendMessage, // 关键！暴露 appendMessage
   } = useMessages();
 
   const { input, setInput } = useInput();
@@ -88,7 +88,7 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
     model: string;
     system?: string;
     project_id: number;
-    project_name?: string; // 新增，见 NewConversationModal
+    project_name?: string; // 新增
     role?: string;
   }) => {
     const systemPrompt = options.system || DEFAULT_SYSTEM_PROMPT;
@@ -100,7 +100,7 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
       name: options.name,
       createdAt: new Date().toISOString(),
       projectId: options.project_id,
-      projectName: options.project_name || '其它',  // ★★★ 这里用真实项目名 ★★★
+      projectName: options.project_name || '其它',
       assistanceRole: options.role || '通用助手',
     };
 
@@ -169,5 +169,6 @@ export default function useConversations({ chatBoxRef, params, navigate }: any) 
     saveMessage,
     scrollToBottom,
     scrollToTop,
+    appendMessage, // 关键！暴露 appendMessage
   };
 }

@@ -36,6 +36,7 @@ function ConversationLayout() {
     saveMessage,
     scrollToBottom,
     scrollToTop,
+    appendMessage, // 确保 appendMessage 已暴露
   } = useConversations({ chatBoxRef, params });
 
   // 自动选中第一个分组下第一个会话
@@ -69,21 +70,11 @@ function ConversationLayout() {
   }
   const roleDesc = ROLE_CONFIGS[roleName]?.desc || '';
 
-  // 添加新消息
-  const appendMessage = (msg, replaceLast = false) => {
-    setMessages(prev => {
-      if (replaceLast && prev.length > 0) {
-        return [...prev.slice(0, -1), msg];
-      }
-      return [...prev, msg];
-    });
-  };
-
   // 使用流式发送消息 hook
   const { send, loading } = useChatStream(
     conversationId,
     model,
-    appendMessage
+    appendMessage // 关键！传递 appendMessage
   );
 
   const handleSend = () => {
