@@ -1,5 +1,5 @@
 // ConversationLayout.tsx
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import ConversationList from './ConversationList';
 import ChatBox from './ChatBox';
@@ -12,6 +12,9 @@ function ConversationLayout() {
   const params = useParams();
   const location = useLocation();
   const chatBoxRef = useRef<HTMLDivElement>(null);
+
+  // ⭐️ 新增自动滚动控制相关
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
 
   const {
     conversationId,
@@ -36,13 +39,12 @@ function ConversationLayout() {
     saveMessage,
     scrollToBottom,
     scrollToTop,
-    appendMessage, // 确保 appendMessage 已暴露
+    appendMessage,
   } = useConversations({ chatBoxRef, params });
 
   // 自动选中第一个分组下第一个会话
   useEffect(() => {
     if (!conversationId && conversationList.length > 0) {
-      // 分组
       const grouped = conversationList.reduce((acc, conv) => {
         const key = conv.projectName || '其它';
         if (!acc[key]) acc[key] = [];
@@ -56,12 +58,10 @@ function ConversationLayout() {
         handleSelectConversation(firstConv.id);
       }
     }
-  }, [conversationId, conversationList]); // 只要有会话且未选中时自动选
+  }, [conversationId, conversationList]);
 
-  // 获取当前会话元信息
   const currentMeta = conversationList.find((c) => c.id === conversationId);
 
-  // 获取角色名：优先 currentMeta.assistanceRole，其次 location.state.role
   let roleName: string = '通用助手';
   if (currentMeta?.assistanceRole && ROLE_CONFIGS[currentMeta.assistanceRole]) {
     roleName = currentMeta.assistanceRole;
@@ -70,17 +70,61 @@ function ConversationLayout() {
   }
   const roleDesc = ROLE_CONFIGS[roleName]?.desc || '';
 
-  // 使用流式发送消息 hook
   const { send, loading } = useChatStream(
     conversationId,
     model,
-    appendMessage // 关键！传递 appendMessage
+    appendMessage
   );
 
   const handleSend = () => {
     if (input.trim() && !loading) {
       send(input);
       setInput('');
+    }
+  };
+
+  // ⭐️ 自动滚动到最新（仅当 isAutoScroll 为 true）
+  useEffect(() => {
+    if (!chatBoxRef.current) return;
+    if (isAutoScroll) {
+      // 立即滚到底部
+      chatBoxRef.current.scrollTo({
+        top: chatBoxRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, isAutoScroll]);
+
+  // ⭐️ 监听用户滚动，判断是否在底部
+  useEffect(() => {
+    const chatBox = chatBoxRef.current;
+    if (!chatBox) return;
+
+    const handleScroll = () => {
+      // 判断是否在底部（允许2px误差）
+      const { scrollTop, scrollHeight, clientHeight } = chatBox;
+      if (scrollHeight - (scrollTop + clientHeight) < 2) {
+        // 在底部
+        setIsAutoScroll(true);
+      } else {
+        setIsAutoScroll(false);
+      }
+    };
+
+    chatBox.addEventListener('scroll', handleScroll);
+    return () => {
+      chatBox.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // ⭐️ 手动点击⬇按钮时也恢复自动滚动
+  const handleScrollToBottom = () => {
+    if (chatBoxRef.current) {
+      chatBoxRef.current.scrollTo({
+        top: chatBoxRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+      setIsAutoScroll(true);
     }
   };
 
@@ -109,7 +153,11 @@ function ConversationLayout() {
         {/* 聊天内容区 */}
         <div className="chat-box-wrapper" style={{ position: 'relative', flex: 1, minHeight: 0 }}>
           <div className="scroll-arrow top" onClick={scrollToTop}>⬆</div>
-          <div className="chat-box" ref={chatBoxRef} style={{ overflowY: 'auto', height: '100%', minHeight: 0 }}>
+          <div
+            className="chat-box"
+            ref={chatBoxRef}
+            style={{ overflowY: 'auto', height: '100%', minHeight: 0 }}
+          >
             <ChatBox
               messages={messages}
               onToggle={toggleCollapse}
@@ -121,7 +169,7 @@ function ConversationLayout() {
               }}
             />
           </div>
-          <div className="scroll-arrow bottom" onClick={scrollToBottom}>⬇</div>
+          <div className="scroll-arrow bottom" onClick={handleScrollToBottom}>⬇</div>
         </div>
 
         {/* 输入区 */}
