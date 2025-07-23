@@ -4,7 +4,7 @@ import { Message } from './types';
 import './App.css';
 import ContextMenu, { MenuItem } from './ContextMenu';
 import usePlanCategories from './hooks/usePlanCategories';
-import { COLLAPSE_LENGTH } from './config';
+import { COLLAPSE_LENGTH, ROLE_CONFIGS } from './config';
 
 function isWaitingTyping(msg: Message) {
   return (
@@ -70,6 +70,7 @@ interface ChatBoxProps {
     projectId?: number;
     name?: string;
   };
+  onRelayRole?: (role: string, content: string) => void; // 👈 新增
 }
 
 const ChatBox: React.FC<ChatBoxProps> = ({
@@ -78,6 +79,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   onCopy,
   onSave,
   conversationMeta,
+  onRelayRole,
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -121,6 +123,25 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   ) => {
     e.preventDefault();
 
+    const relayMenu: MenuItem = {
+      label: '转交角色...',
+      submenu: Object.keys(ROLE_CONFIGS).map(role => ({
+        label: role,
+        onClick: () => {
+          // 分别传递小气泡或大气泡内容
+          let relayContent = '';
+          if (msgIdx !== null && group.msgs[msgIdx]) {
+            relayContent = getFullContent(group.msgs[msgIdx]);
+          } else {
+            relayContent = group.msgs
+              .map((msg) => trimEndLines(getFullContent(msg)))
+              .join('\n------\n');
+          }
+          onRelayRole?.(role, relayContent);
+        }
+      }))
+    };
+
     if (msgIdx !== null && group.msgs[msgIdx]) {
       // 小气泡右键
       const idx = group.indices[msgIdx];
@@ -142,6 +163,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         x: e.clientX,
         y: e.clientY,
         items: [
+          relayMenu,
           { label: '复制', onClick: () => onCopy(getFullContent(msg)) },
           { label: '保存', onClick: () => onSave(getFullContent(msg)) },
           sendToMenu,
@@ -167,6 +189,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         x: e.clientX,
         y: e.clientY,
         items: [
+          relayMenu,
           { label: '复制', onClick: () => onCopy(allContent) },
           { label: '保存', onClick: () => onSave(allContent) },
           sendToMenu,

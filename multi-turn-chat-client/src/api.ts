@@ -42,6 +42,7 @@ export async function updateConversationProject(id: string, projectId: number): 
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
+
     },
     body: JSON.stringify({ project_id: projectId }),
   });
@@ -147,6 +148,7 @@ export async function updateConversationName(id: string, newName: string): Promi
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
+
     },
     body: JSON.stringify({ name: newName }),
   });
@@ -158,6 +160,7 @@ export async function updateConversationModel(id: string, model: string): Promis
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
+
     },
     body: JSON.stringify({ model }),
   });
@@ -225,4 +228,3 @@ export async function createPlanDocument({
   }
   return await res.json();
 }
-

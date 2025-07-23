@@ -12,7 +12,7 @@ const DEFAULT_SYSTEM_PROMPT = '你是一个通用助手，能够处理各种任�
 export default function useConversations({ chatBoxRef, params }: any) {
   const {
     conversationList,
-    setConversationList,
+    setConversationList, // ⭐️暴露出来
     refreshConversations,
     renameConversation,
     removeConversation,
@@ -27,7 +27,7 @@ export default function useConversations({ chatBoxRef, params }: any) {
     toggleCollapse,
     copyMessage,
     saveMessage,
-    appendMessage, // 关键！暴露 appendMessage
+    appendMessage,
   } = useMessages();
 
   const { input, setInput } = useInput();
@@ -37,10 +37,8 @@ export default function useConversations({ chatBoxRef, params }: any) {
   const [model, setModel] = useState('');
   const [modelOptions, setModelOptions] = useState<string[]>([]);
 
-  // ✅ 缓存每个会话的输入内容
   const inputCache = useRef<Record<string, string>>({});
 
-  // 初始加载模型 & 会话列表
   useEffect(() => {
     getModels().then(setModelOptions);
     refreshConversations();
@@ -50,7 +48,6 @@ export default function useConversations({ chatBoxRef, params }: any) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 会话ID变更时，自动加载消息和回填输入内容
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
@@ -62,8 +59,6 @@ export default function useConversations({ chatBoxRef, params }: any) {
       setModel(found.model);
       loadMessages(found.id);
       scrollToBottom();
-
-      // ✅ 切换时自动回填缓存输入，没有则清空
       if (Object.prototype.hasOwnProperty.call(inputCache.current, found.id)) {
         setInput(inputCache.current[found.id]);
       } else {
@@ -73,22 +68,19 @@ export default function useConversations({ chatBoxRef, params }: any) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, conversationList]);
 
-  // 设置当前会话并保存前一个的输入内容
   const setConversationIdAndLoad = async (id: string) => {
     if (conversationId) {
-      inputCache.current[conversationId] = input; // ✅ 保存旧的输入内容
+      inputCache.current[conversationId] = input;
     }
     setConversationId(id);
-    // 后续加载放到 useEffect
   };
 
-  // === 修正点：projectName 由 options.project_name 传入 ===
   const handleNewConversation = async (options: {
     name?: string;
     model: string;
     system?: string;
     project_id: number;
-    project_name?: string; // 新增
+    project_name?: string;
     role?: string;
   }) => {
     const systemPrompt = options.system || DEFAULT_SYSTEM_PROMPT;
@@ -143,6 +135,7 @@ export default function useConversations({ chatBoxRef, params }: any) {
   return {
     conversationId,
     setConversationId,
+    setConversationList, // ⭐️暴露
     messages,
     setMessages,
     model,
@@ -169,6 +162,6 @@ export default function useConversations({ chatBoxRef, params }: any) {
     saveMessage,
     scrollToBottom,
     scrollToTop,
-    appendMessage, // 关键！暴露 appendMessage
+    appendMessage,
   };
 }

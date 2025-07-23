@@ -5,20 +5,21 @@ import ConversationList from './ConversationList';
 import ChatBox from './ChatBox';
 import ChatInput from './ChatInput';
 import useConversations from './hooks/useConversations';
-import useChatStream from './useChatStream';
+import useChatStream, { createChatStream } from './useChatStream';
 import { ROLE_CONFIGS } from './config';
+import { createConversation } from './api';
 
 function ConversationLayout() {
   const params = useParams();
   const location = useLocation();
   const chatBoxRef = useRef<HTMLDivElement>(null);
 
-  // ⭐️ 新增自动滚动控制相关
   const [isAutoScroll, setIsAutoScroll] = useState(true);
 
   const {
     conversationId,
     setConversationId,
+    setConversationList, // ⭐️
     messages,
     setMessages,
     model,
@@ -42,7 +43,6 @@ function ConversationLayout() {
     appendMessage,
   } = useConversations({ chatBoxRef, params });
 
-  // 自动选中第一个分组下第一个会话
   useEffect(() => {
     if (!conversationId && conversationList.length > 0) {
       const grouped = conversationList.reduce((acc, conv) => {
@@ -83,11 +83,9 @@ function ConversationLayout() {
     }
   };
 
-  // ⭐️ 自动滚动到最新（仅当 isAutoScroll 为 true）
   useEffect(() => {
     if (!chatBoxRef.current) return;
     if (isAutoScroll) {
-      // 立即滚到底部
       chatBoxRef.current.scrollTo({
         top: chatBoxRef.current.scrollHeight,
         behavior: 'smooth',
@@ -95,16 +93,13 @@ function ConversationLayout() {
     }
   }, [messages, isAutoScroll]);
 
-  // ⭐️ 监听用户滚动，判断是否在底部
   useEffect(() => {
     const chatBox = chatBoxRef.current;
     if (!chatBox) return;
 
     const handleScroll = () => {
-      // 判断是否在底部（允许2px误差）
       const { scrollTop, scrollHeight, clientHeight } = chatBox;
       if (scrollHeight - (scrollTop + clientHeight) < 2) {
-        // 在底部
         setIsAutoScroll(true);
       } else {
         setIsAutoScroll(false);
@@ -117,7 +112,6 @@ function ConversationLayout() {
     };
   }, []);
 
-  // ⭐️ 手动点击⬇按钮时也恢复自动滚动
   const handleScrollToBottom = () => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTo({
@@ -128,9 +122,61 @@ function ConversationLayout() {
     }
   };
 
+  // ===============================
+  // "转交角色..."功能
+  // ===============================
+  const [relayLock, setRelayLock] = useState(false);
+  const [relayLoading, setRelayLoading] = useState(false);
+
+  const handleRelayRole = async (relayRole: string, relayContent: string) => {
+    if (relayLock) return;
+    setRelayLock(true);
+
+    try {
+      const baseName = (currentMeta?.name || '未命名会话') + '转交';
+      const projectId = currentMeta?.projectId || 0;
+      const projectName = currentMeta?.projectName || '其它';
+      const roleModel = ROLE_CONFIGS[relayRole]?.model || modelOptions[0] || '';
+      const systemPrompt = ROLE_CONFIGS[relayRole]?.prompt || '';
+
+      // 创建新会话（后端）
+      const convId = await createConversation(
+        systemPrompt,
+        projectId,
+        baseName,
+        roleModel,
+        relayRole
+      );
+
+      const newMeta = {
+        id: convId,
+        model: roleModel,
+        name: baseName,
+        createdAt: new Date().toISOString(),
+        projectId,
+        projectName,
+        assistanceRole: relayRole,
+      };
+
+      setConversationList((prev) => [...prev, newMeta]);
+      setConversationId(convId);
+      setMessages([]); // 清空消息区
+
+      setTimeout(() => {
+        // 用 createChatStream 实现自动递归continue逻辑
+        const { send } = createChatStream(convId, roleModel, appendMessage, setRelayLoading);
+        send(relayContent);
+      }, 80);
+
+    } catch (e) {
+      alert('转交会话失败: ' + ((e as any)?.message || e));
+    } finally {
+      setTimeout(() => setRelayLock(false), 500);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
-      {/* 会话列表侧栏 */}
       <ConversationList
         conversations={conversationList}
         activeId={conversationId}
@@ -141,16 +187,11 @@ function ConversationLayout() {
         onModelChange={handleModelChange}
         modelOptions={modelOptions}
       />
-
-      {/* 聊天主区 */}
       <div className="chat-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {/* 会话顶部助手角色描述 */}
         <div className="chat-toolbar">
           <span style={{ fontWeight: 'bold', color: '#1a73e8' }}>{roleName}</span>
           <span style={{ marginLeft: 12 }}>{roleDesc}</span>
         </div>
-
-        {/* 聊天内容区 */}
         <div className="chat-box-wrapper" style={{ position: 'relative', flex: 1, minHeight: 0 }}>
           <div className="scroll-arrow top" onClick={scrollToTop}>⬆</div>
           <div
@@ -167,12 +208,11 @@ function ConversationLayout() {
                 projectId: currentMeta?.projectId,
                 name: currentMeta?.name,
               }}
+              onRelayRole={handleRelayRole}
             />
           </div>
           <div className="scroll-arrow bottom" onClick={handleScrollToBottom}>⬇</div>
         </div>
-
-        {/* 输入区 */}
         <ChatInput
           value={input}
           onChange={setInput}
