@@ -4,6 +4,8 @@
 
 ```bash
 npm install event-source-polyfill
+npm install react-markdown remark-gfm
+
 
 npm create vite@latest multi-turn-chat-client -- --template react-ts
 cd multi-turn-chat-client

@@ -61,7 +61,7 @@ Do not add any explanatory text, and do not ask me any questions.
  Each code file must not exceed 150 lines, or it should be refactored into multiple smaller files during the design phase.
     `,
         "model": "GPT-4.1",
-    "desc": "请描述目标市场、用户群体及产品定位。目标是输出《产品需求文档》(PRD)。"
+    "desc": "请描述开发计划，Phase 1: Architecture Analysis & Design；Phase 2: Modular Decomposition & File Planning；Phase 3: Codeing。"
   },
   "产品经理": {
     "prompt": "你负责产品战略规划。根据市场分析：1) 定义产品愿景 2) 制定产品路线图 3) 确定核心功能优先级 4) 输出《产品需求文档》(PRD)。需持续验证需求与市场匹配度。"+USER_FEADBAK,
@@ -147,7 +147,7 @@ Each time, output one Step, with the first line starting with "Step [X/Y] - Goal
 Do not add any explanatory text, and do not ask me any questions.
 --- Output Format ---
 Clearly indicate the step number with explanation, e.g. Step [1/50] - Initial Project Structure, create all the dir.
-Steps MUST be divided by six-dash lines: ======
+Steps MUST be divided by six-dash lines: ------
 Specify the Action, which must be one of: execute shell command, create or delete folder, file operation (create, update, delete). E.g.: Update file.
 Specify the file relative path (except for shell commands), e.g.: FormulaComputer/backend/src/main.py
 Provide the complete bash command or the complete code of the relevant file, For the detailed code in each file, DO NOT omit any code. It is absolutely unacceptable to only provide a segment of example code and then add comments such as "the rest can be implemented following the above pattern.".
