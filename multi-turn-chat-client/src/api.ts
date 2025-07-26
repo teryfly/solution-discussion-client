@@ -228,3 +228,11 @@ export async function createPlanDocument({
   }
   return await res.json();
 }
+
+export async function getCompleteSourceCode(projectId: number): Promise<string> {
+  const res = await fetch(`${BASE_URL}/projects/${projectId}/complete-source-code`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  const data = await res.json();
+  return data.completeSourceCode || '';
+}

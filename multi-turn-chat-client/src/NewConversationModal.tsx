@@ -1,9 +1,8 @@
-// NewConversationModal.tsx
 import React, { useEffect, useState } from 'react';
-import { getProjects } from './api';
+import { getProjects, getCompleteSourceCode } from './api';
 import { ROLE_CONFIGS } from './config';
 
-// 修改这里，返回 MMDDhhmmss 格式
+// 默认生成会话名（格式 MMDDhhmmss）
 function generateDefaultName() {
   const now = new Date();
   const MM = String(now.getMonth() + 1).padStart(2, '0');
@@ -29,7 +28,13 @@ interface Props {
   defaultProjectName?: string;
 }
 
-const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, modelOptions, defaultProjectName }) => {
+const NewConversationModal: React.FC<Props> = ({
+  visible,
+  onClose,
+  onCreate,
+  modelOptions,
+  defaultProjectName
+}) => {
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
   const [role, setRole] = useState('需求分析师');
   const [name, setName] = useState(generateDefaultName());
@@ -37,6 +42,7 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
   const [model, setModel] = useState(ROLE_CONFIGS['需求分析师'].model);
   const [projectId, setProjectId] = useState(0);
   const [modelList, setModelList] = useState<string[]>([]);
+  const [learnSourceCode, setLearnSourceCode] = useState(false); // ✅ 新增：是否学习项目源码
 
   function getModelsAndSelect(role: string, modelOptions: string[]) {
     const defaultModel = ROLE_CONFIGS[role]?.model || '';
@@ -54,12 +60,13 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
       setRole('需求分析师');
       setName(generateDefaultName());
       setSystem(ROLE_CONFIGS['需求分析师'].prompt);
-      getProjects().then(_projects => {
-        setProjects(_projects);
+      setLearnSourceCode(false);
 
+      getProjects().then((_projects) => {
+        setProjects(_projects);
         let defaultId = 0;
         if (defaultProjectName && defaultProjectName !== '其它') {
-          const found = _projects.find(p => p.name === defaultProjectName);
+          const found = _projects.find((p) => p.name === defaultProjectName);
           if (found) defaultId = found.id;
         }
         setProjectId(defaultId);
@@ -69,7 +76,6 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
       setModelList(list);
       setModel(value);
     }
-    // eslint-disable-next-line
   }, [visible, modelOptions, defaultProjectName]);
 
   const handleRoleChange = (r: string) => {
@@ -85,12 +91,24 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
     setModel(value);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
+    let finalSystem = system;
     const projectName = projects.find((p) => p.id === projectId)?.name || '其它';
+
+    if (learnSourceCode && projectId > 0) {
+      try {
+        const completeSource = await getCompleteSourceCode(projectId);
+        finalSystem += `\n\n--- The File Structure and Source Code of this Project BEGIN---\n${completeSource}\n--- Source Code END ---`;
+      } catch (e) {
+        alert('加载项目源码失败: ' + ((e as any)?.message || e));
+        return;
+      }
+    }
+
     onCreate({
       name,
       model,
-      system,
+      system: finalSystem,
       project_id: projectId,
       project_name: projectName,
       role,
@@ -107,10 +125,7 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label>助手角色：</label>
-            <select
-              value={role}
-              onChange={(e) => handleRoleChange(e.target.value)}
-            >
+            <select value={role} onChange={(e) => handleRoleChange(e.target.value)}>
               {Object.keys(ROLE_CONFIGS).map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -120,19 +135,14 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
           </div>
           <div style={{ flex: 1 }}>
             <label>会话名：</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
         </div>
+
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label>相关项目：</label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(Number(e.target.value))}
-            >
+            <select value={projectId} onChange={(e) => setProjectId(Number(e.target.value))}>
               <option value={0}>其它</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -143,10 +153,7 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
           </div>
           <div style={{ flex: 1 }}>
             <label>选择模型：</label>
-            <select
-              value={model}
-              onChange={e => setModel(e.target.value)}
-            >
+            <select value={model} onChange={(e) => setModel(e.target.value)}>
               {modelList.map((m) => (
                 <option key={m} value={m}>
                   {m}
@@ -155,6 +162,19 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
             </select>
           </div>
         </div>
+
+        <br />
+        <div>
+          <label className="inline-label">
+            <input
+              type="checkbox"
+              checked={learnSourceCode}
+              onChange={(e) => setLearnSourceCode(e.target.checked)}
+            />
+            学习项目源码(需确保项目工作路径设置正确，会增加token消耗)
+          </label>
+        </div>
+
         {role === '通用助手' && (
           <div>
             <label>System Prompt：</label>
@@ -165,6 +185,7 @@ const NewConversationModal: React.FC<Props> = ({ visible, onClose, onCreate, mod
             />
           </div>
         )}
+
         <div className="modal-actions">
           <button onClick={handleCreate}>创建</button>
           <button onClick={onClose}>取消</button>

@@ -330,6 +330,15 @@ button:disabled {
 .new-conversation-page button:hover {
   background-color: #155ab6;
 }
+.new-conversation-page .inline-label {
+  display: inline-flex;
+  align-items: center; 
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap; 
+  gap: 8px;
+}
+
 .waiting-typing {
   display: inline-block;
   color: #888;
