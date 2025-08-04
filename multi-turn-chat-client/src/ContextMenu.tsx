@@ -17,6 +17,7 @@ interface Props {
 const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [submenuIndex, setSubmenuIndex] = useState<number | null>(null);
+  const [adjustedPos, setAdjustedPos] = useState({ x, y });
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -28,13 +29,21 @@ const ContextMenu: React.FC<Props> = ({ x, y, items, onClose }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  // 计算菜单显示位置，防止超出视口底部
+  useEffect(() => {
+    const menuHeight = items.length * 36 + 8; // 估算每项高度36px，加上外边距
+    const viewportHeight = window.innerHeight;
+    const newY = y + menuHeight > viewportHeight ? viewportHeight - menuHeight - 8 : y;
+    setAdjustedPos({ x, y: newY });
+  }, [x, y, items.length]);
+
   return (
     <div
       ref={menuRef}
       style={{
         position: 'fixed',
-        top: y,
-        left: x,
+        top: adjustedPos.y,
+        left: adjustedPos.x,
         background: 'white',
         border: '1px solid #ccc',
         borderRadius: 6,

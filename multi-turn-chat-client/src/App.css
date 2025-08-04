@@ -65,9 +65,10 @@ h2 {
 
 
 .chat-msg.system {
-  text-align: center;
+  text-align: left;
   font-style: italic;
   color: #777;
+ 
 }
 
 

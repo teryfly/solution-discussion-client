@@ -83,9 +83,19 @@ function ConversationLayout() {
     }
   };
 
+  // 修改后的自动滚动逻辑：
   useEffect(() => {
     if (!chatBoxRef.current) return;
-    if (isAutoScroll) {
+    // 只在自动滚动开关开启，且最新消息为 assistant 回复且未处于折叠状态时，执行滚动
+    const lastMsg = messages[messages.length - 1];
+    const shouldScroll =
+      isAutoScroll &&
+      lastMsg &&
+      lastMsg.role === 'assistant' &&
+      typeof lastMsg.content === 'string' &&
+      !lastMsg.collapsed;
+
+    if (shouldScroll) {
       chatBoxRef.current.scrollTo({
         top: chatBoxRef.current.scrollHeight,
         behavior: 'smooth',

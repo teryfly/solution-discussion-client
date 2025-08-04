@@ -3,7 +3,7 @@
 /**
  * 对 LLM assistant 回复文本做统一规整处理
  * 1. 删除开头所有“思索、推理、反思”类标签/片段
- * 2. 删除结尾 [to be continue]
+ * 2. 删除结尾 [to be continued]
  * @param content
  */
 export function trimAssistantReplay(content: string): string {
@@ -34,7 +34,7 @@ export function trimAssistantReplay(content: string): string {
     if (result === prev) break;
   }
 
-  // 2. 删除结尾 [to be continue]
+  // 2. 删除结尾 [to be continued]
   result = result.replace(/\s*\[to be continue\]\s*$/i, '');
 
   return result.trim();
