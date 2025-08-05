@@ -185,7 +185,7 @@ function ConversationLayout() {
     }
   };
 
-  // 关键：将 setInput 传递给ChatBox 的 onInputValueChange
+  // 关键：将 setInput 和 setMessages 传递给ChatBox
   return (
     <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
       <ConversationList
@@ -221,6 +221,7 @@ function ConversationLayout() {
               }}
               onRelayRole={handleRelayRole}
               onInputValueChange={setInput}  // 关键：自动填充输入框
+              setMessages={setMessages}      // 关键：传递消息更新函数
             />
           </div>
           <div className="scroll-arrow bottom" onClick={handleScrollToBottom}>⬇</div>

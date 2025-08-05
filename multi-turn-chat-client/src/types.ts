@@ -3,6 +3,7 @@ export type Message = {
   role: string;
   content: string;
   collapsed?: boolean;
+  id?: number; // 添加可选的消息ID字段
 };
 
 export type ConversationMeta = {

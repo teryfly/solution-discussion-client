@@ -78,6 +78,23 @@ export default function useMessages() {
         // 只替换最后一条
         return [...prev.slice(0, -1), msg];
       }
+      
+      // 检查是否需要去重：如果新消息有ID且与现有消息重复，则替换
+      if (msg.id && msg.role === 'user') {
+        const existingIndex = prev.findIndex(m => 
+          m.role === 'user' && 
+          m.content === msg.content && 
+          (!m.id || m.id === msg.id)
+        );
+        
+        if (existingIndex !== -1) {
+          // 找到重复的用户消息，替换它
+          const updated = [...prev];
+          updated[existingIndex] = msg;
+          return updated;
+        }
+      }
+      
       return [...prev, msg];
     });
   };

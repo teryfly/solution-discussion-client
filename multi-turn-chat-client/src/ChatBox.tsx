@@ -38,6 +38,7 @@ interface ChatBoxProps {
   };
   onRelayRole?: (role: string, content: string) => void;
   onInputValueChange?: (content: string) => void;
+  setMessages?: (messages: Message[]) => void; // 新增：用于本地消息更新
 }
 
 const ChatBox: React.FC<ChatBoxProps> = ({
@@ -48,6 +49,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   conversationMeta,
   onRelayRole,
   onInputValueChange,
+  setMessages, // 新增：用于本地消息更新
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -69,61 +71,111 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     const msg = messages[index];
     if (!msg || typeof msg.id !== 'number') return;
     if (!window.confirm('确定要删除此条消息吗？')) return;
+    
     setDeleting(true);
-    setLocalDeletingIds(new Set([msg.id as number]));
+    const msgId = msg.id as number;
+    setLocalDeletingIds(new Set([msgId]));
+
     try {
-      await deleteMessagesApi([msg.id as number]);
+      // 先调用后端删除API
+      await deleteMessagesApi([msgId]);
+      
+      // 删除成功后立即更新前端状态
+      if (setMessages) {
+        setMessages(messages.filter((m, idx) => idx !== index));
+      }
+    } catch (error) {
+      console.error('删除消息失败:', error);
+      alert('删除消息失败，请重试');
+      // 删除失败时恢复状态
+      setLocalDeletingIds(new Set());
     } finally {
       setDeleting(false);
-      setTimeout(() => setLocalDeletingIds(new Set()), 500);
     }
   };
 
+  // 删除消息组
   const handleDeleteGroup = async (indices: number[]) => {
     const ids = indices
       .map(i => messages[i])
       .filter(m => m && typeof m.id === 'number')
       .map(m => m.id as number);
+    
     if (ids.length === 0) return;
     if (!window.confirm(`确定要删除这${ids.length}条消息吗？`)) return;
+    
     setDeleting(true);
     setLocalDeletingIds(new Set(ids));
+
     try {
+      // 先调用后端删除API
       await deleteMessagesApi(ids);
+      
+      // 删除成功后立即更新前端状态
+      if (setMessages) {
+        const removeSet = new Set(ids);
+        setMessages(messages.filter((msg) => !removeSet.has(msg.id as number)));
+      }
+    } catch (error) {
+      console.error('删除消息组失败:', error);
+      alert('删除消息组失败，请重试');
+      // 删除失败时恢复状态
+      setLocalDeletingIds(new Set());
     } finally {
       setDeleting(false);
-      setTimeout(() => setLocalDeletingIds(new Set()), 500);
     }
   };
 
   // 重发弹窗触发
   const handleResendSingle = (index: number) => setResendModal({ visible: true, targetIdx: index });
 
-  // 重发确认：始终用 props.messages，收集 index 及其之后所有消息的 id
+  // 重发确认：收集 index 及其之后所有消息的 id
   const handleResendConfirm = async () => {
     if (resendModal.targetIdx == null) return;
+    
     const idx = resendModal.targetIdx;
-    // 以props.messages为准，收集idx及其之后所有消息id
+    const targetMsg = messages[idx];
+    
+    // 收集idx及其之后所有消息id
     const idsToDelete: number[] = [];
-    for (let i = idx; i < messages.length; ++i) {
+    for (let i = idx; i < messages.length; i++) {
       const id = messages[i]?.id;
       if (typeof id === 'number') idsToDelete.push(id);
     }
-    const targetMsg = messages[idx];
+    
     setResendLoading(true);
     setLocalDeletingIds(new Set(idsToDelete));
+
     try {
-      if (idsToDelete.length > 0) await deleteMessagesApi(idsToDelete);
+      // 先调用后端删除API
+      if (idsToDelete.length > 0) {
+        await deleteMessagesApi(idsToDelete);
+      }
+      
+      // 删除成功后立即更新前端状态
+      if (setMessages) {
+        const newMsgs = messages.filter((msg, i) => i < idx);
+        setMessages(newMsgs);
+      }
+      
       // 自动填入输入框
-      if (onInputValueChange) onInputValueChange(getFullContent(targetMsg));
+      if (onInputValueChange) {
+        onInputValueChange(getFullContent(targetMsg));
+      }
+      
       setTimeout(() => {
         const textarea = document.querySelector('textarea');
         if (textarea) textarea.focus();
       }, 80);
+      
+    } catch (error) {
+      console.error('重发失败:', error);
+      alert('重发失败，请重试');
+      // 失败时恢复状态
+      setLocalDeletingIds(new Set());
     } finally {
       setResendLoading(false);
       setResendModal({ visible: false, targetIdx: null });
-      setTimeout(() => setLocalDeletingIds(new Set()), 500);
     }
   };
 
@@ -245,7 +297,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     }
   };
 
-  // 过滤掉本地标记删除的气泡动画
+  // 过滤掉本地标记删除的气泡，用于UI显示
   const filteredMessages = messages.filter(
     msg => !localDeletingIds.has(msg.id as number)
   );

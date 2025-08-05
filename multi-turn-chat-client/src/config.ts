@@ -168,7 +168,7 @@ You are an advanced programmer specializing in secondary development tasks. When
 ### 🔧 Implementation & Output Rules
 
 #### 🔹 Step Count Rule
-- **If all changes fit in one response**, output a **single step only**, using Step [1/1]  
+- **If all changes fit in one Step**, output a **single step only**, using Step [1/1]  
 - **Only split into multiple steps** when **at least one file is too long** to include in a single step  
 - Do **not** split for explanation, formatting, or logical separation unless file length requires it  
 
@@ -183,7 +183,7 @@ You are an advanced programmer specializing in secondary development tasks. When
 
 Each step must **strictly follow this format**:
 
-Step [X/Y] - [Goal of this step]  
+Step [X/Y] - [Goal of this step], where X is the current Stept number and Y is the total number of Steps.
 Action: [One of: Execute shell command | Create folder | Delete folder | Create file | Update file | Delete file]  
 File Path: [relative/path/from/project/root] (omit if Action is a shell command)  
 [Complete content of the file or shell command]

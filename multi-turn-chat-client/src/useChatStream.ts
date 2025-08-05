@@ -64,14 +64,17 @@ export function createChatStream(
     if (!input.trim()) return;
     setLoading?.(true);
 
-    // 用户消息
-    appendMessage({ role: 'user', content: input, collapsed: false });
-
     let rounds = 0;
+    let userMessageId: number | undefined;
+    let assistantMessageId: number | undefined;
 
     // 内部递归: assistant流式回复
     const sendOne = async (prompt: string) => {
       let streamedReply = '';
+      let isFirstChunk = true;
+
+      // 先添加用户消息（暂时没有ID）
+      appendMessage({ role: 'user', content: prompt, collapsed: false });
 
       // 插入等待动画
       appendMessage(
@@ -83,12 +86,44 @@ export function createChatStream(
           conversationId,
           prompt,
           model,
-          (chunk) => {
-            streamedReply += chunk;
-            appendMessage(
-              { role: 'assistant', content: streamedReply, collapsed: false },
-              true
-            );
+          (chunk, metadata) => {
+            // 第一个chunk时处理消息ID
+            if (isFirstChunk && metadata) {
+              isFirstChunk = false;
+              
+              // 保存消息ID
+              if (metadata.user_message_id) {
+                userMessageId = metadata.user_message_id;
+              }
+              if (metadata.assistant_message_id) {
+                assistantMessageId = metadata.assistant_message_id;
+              }
+
+              // 更新用户消息，添加ID（替换倒数第二条消息）
+              if (userMessageId) {
+                appendMessage(
+                  { role: 'user', content: prompt, collapsed: false, id: userMessageId },
+                  false // 先不替换，而是添加新的带ID的消息
+                );
+                
+                // 然后移除旧的用户消息（通过重新构建消息列表的方式）
+                // 这里我们依赖外部组件来处理消息去重
+              }
+            }
+
+            // 处理内容chunk
+            if (chunk) {
+              streamedReply += chunk;
+              appendMessage(
+                { 
+                  role: 'assistant', 
+                  content: streamedReply, 
+                  collapsed: false,
+                  id: assistantMessageId 
+                },
+                true // 替换最后一条助手消息
+              );
+            }
           },
           async () => {
             if (shouldAutoContinue(streamedReply, rounds)) {
@@ -96,13 +131,23 @@ export function createChatStream(
               // 移除末尾 [to be continue]（如果有）
               streamedReply = streamedReply.replace(/\s*\[to be continue\]\s*$/i, '').trim();
               appendMessage(
-                { role: 'assistant', content: streamedReply, collapsed: false },
+                { 
+                  role: 'assistant', 
+                  content: streamedReply, 
+                  collapsed: false,
+                  id: assistantMessageId 
+                },
                 true
               );
               await sendOne('go on');
             } else {
               appendMessage(
-                { role: 'assistant', content: streamedReply, collapsed: false },
+                { 
+                  role: 'assistant', 
+                  content: streamedReply, 
+                  collapsed: false,
+                  id: assistantMessageId 
+                },
                 true
               );
               setLoading?.(false);

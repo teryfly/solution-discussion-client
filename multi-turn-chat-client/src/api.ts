@@ -76,7 +76,7 @@ export async function sendMessageStream(
   conversationId: string,
   content: string,
   model: string,
-  onChunk: (text: string) => void,
+  onChunk: (text: string, metadata?: { user_message_id?: number; assistant_message_id?: number; conversation_id?: string }) => void,
   onDone: () => void,
   onError: (err: any) => void
 ) {
@@ -100,6 +100,7 @@ export async function sendMessageStream(
     const reader = res.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
+    let isFirstMessage = true;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -119,7 +120,21 @@ export async function sendMessageStream(
 
           try {
             const payload = JSON.parse(json);
-            if (payload.content) onChunk(payload.content);
+            
+            // 第一条消息包含ID信息
+            if (isFirstMessage && (payload.user_message_id || payload.assistant_message_id)) {
+              isFirstMessage = false;
+              onChunk('', {
+                user_message_id: payload.user_message_id,
+                assistant_message_id: payload.assistant_message_id,
+                conversation_id: payload.conversation_id
+              });
+            }
+            
+            // 后续消息包含内容
+            if (payload.content) {
+              onChunk(payload.content);
+            }
           } catch (err) {
             console.warn('解析 SSE 错误:', err, json);
           }
