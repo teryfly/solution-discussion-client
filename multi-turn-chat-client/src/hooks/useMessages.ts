@@ -13,13 +13,15 @@ export default function useMessages() {
     setMessages([{ role: 'system', content: '加载中...', collapsed: false }]);
     const history = await getMessages(conversationId);
 
-    // 全部按配置折叠长度处理
-    const collapsedHistory = history.map((msg) => {
+    // history: [{id, role, content}]
+    // 全部按配置折叠长度处理，并保留id
+    const collapsedHistory = history.map((msg: any) => {
       const tooLong = msg.content.length > COLLAPSE_LENGTH;
       const content =
         msg.role === 'assistant' ? trimAssistantReplay(msg.content) : msg.content;
       return {
-        ...msg,
+        id: msg.id,
+        role: msg.role,
         content,
         collapsed: tooLong,
       };

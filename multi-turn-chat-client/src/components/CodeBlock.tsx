@@ -1,5 +1,4 @@
-// src/components/CodeBlock.tsx
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 
 interface CodeBlockProps {
   language?: string;
@@ -8,10 +7,12 @@ interface CodeBlockProps {
 
 const CodeBlock: React.FC<CodeBlockProps> = ({ language = '', code }) => {
   const ref = useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code).then(() => {
-      alert('代码已复制到剪贴板');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200); // 1.2秒后恢复
     });
   };
 
@@ -32,15 +33,23 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language = '', code }) => {
           top: 4,
           right: 8,
           fontSize: 12,
-          background: '#1a73e8',
+          background: copied ? '#4caf50' : '#1a73e8',
           color: '#fff',
           border: 'none',
           padding: '4px 8px',
           borderRadius: 4,
-          cursor: 'pointer'
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4
         }}
       >
-        复制
+        {copied ? (
+          <span style={{ fontSize: 14 }}>✅</span>
+        ) : (
+          <span style={{ fontSize: 14 }}>📋</span>
+        )}
+        {copied ? '已复制' : '复制'}
       </button>
       <pre
         ref={ref}

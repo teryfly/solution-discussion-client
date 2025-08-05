@@ -4,23 +4,16 @@ import './App.css';
 import ContextMenu, { MenuItem } from './ContextMenu';
 import usePlanCategories from './hooks/usePlanCategories';
 import { COLLAPSE_LENGTH, ROLE_CONFIGS } from './config';
-import CodeBlock from './components/CodeBlock';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-
-function isWaitingTyping(msg: Message) {
-  return (
-    msg.role === 'assistant' &&
-    typeof msg.content === 'string' &&
-    msg.content.startsWith('<span class="waiting-typing">')
-  );
-}
+import ResendConfirmModal from './components/ResendConfirmModal';
+import {
+  deleteMessagesApi,
+  removeMessagesByIds,
+} from './utils/messageActions';
+import ChatBubbleGroup, { groupMessages } from './components/ChatBubbleGroup';
 
 function getFullContent(msg: Message): string {
   if (typeof msg.content === 'string') {
-    return isWaitingTyping(msg)
-      ? msg.content.replace(/<[^>]+>/g, '')
-      : msg.content;
+    return msg.content.replace(/<[^>]+>/g, '');
   }
   return String(msg.content);
 }
@@ -34,53 +27,6 @@ function trimEndLines(text: string): string {
   return lines.slice(0, end + 1).join('\n');
 }
 
-function groupMessages(messages: Message[]) {
-  const groups: Array<{
-    role: string,
-    msgs: Message[],
-    indices: number[],
-  }> = [];
-  let lastRole = '';
-  let curr: { role: string, msgs: Message[], indices: number[] } | null = null;
-
-  messages.forEach((msg, idx) => {
-    if (!curr || msg.role !== lastRole) {
-      curr = { role: msg.role, msgs: [msg], indices: [idx] };
-      groups.push(curr);
-      lastRole = msg.role;
-    } else {
-      curr.msgs.push(msg);
-      curr.indices.push(idx);
-    }
-  });
-  return groups;
-}
-
-// Markdown 渲染组件，内嵌 CodeBlock 支持
-const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        code({ node, inline, className, children, ...props }) {
-          const match = /language-(\w+)/.exec(className || '');
-          if (inline) {
-            return <code className={className} {...props}>{children}</code>;
-          }
-          return (
-            <CodeBlock
-              language={match?.[1] || ''}
-              code={String(children).replace(/\n$/, '')}
-            />
-          );
-        },
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  );
-};
-
 interface ChatBoxProps {
   messages: Message[];
   onToggle: (index: number) => void;
@@ -91,6 +37,7 @@ interface ChatBoxProps {
     name?: string;
   };
   onRelayRole?: (role: string, content: string) => void;
+  onInputValueChange?: (content: string) => void;
 }
 
 const ChatBox: React.FC<ChatBoxProps> = ({
@@ -100,15 +47,85 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   onSave,
   conversationMeta,
   onRelayRole,
+  onInputValueChange,
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     items: MenuItem[];
   } | null>(null);
-
+  const [localDeletingIds, setLocalDeletingIds] = useState<Set<number>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [resendModal, setResendModal] = useState<{ visible: boolean; targetIdx: number | null }>({
+    visible: false,
+    targetIdx: null,
+  });
+  const [resendLoading, setResendLoading] = useState(false);
   const plan = usePlanCategories();
   const bubbleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // 删除单条消息
+  const handleDeleteSingle = async (index: number) => {
+    const msg = messages[index];
+    if (!msg || typeof msg.id !== 'number') return;
+    if (!window.confirm('确定要删除此条消息吗？')) return;
+    setDeleting(true);
+    setLocalDeletingIds(new Set([msg.id as number]));
+    try {
+      await deleteMessagesApi([msg.id as number]);
+    } finally {
+      setDeleting(false);
+      setTimeout(() => setLocalDeletingIds(new Set()), 500);
+    }
+  };
+
+  const handleDeleteGroup = async (indices: number[]) => {
+    const ids = indices
+      .map(i => messages[i])
+      .filter(m => m && typeof m.id === 'number')
+      .map(m => m.id as number);
+    if (ids.length === 0) return;
+    if (!window.confirm(`确定要删除这${ids.length}条消息吗？`)) return;
+    setDeleting(true);
+    setLocalDeletingIds(new Set(ids));
+    try {
+      await deleteMessagesApi(ids);
+    } finally {
+      setDeleting(false);
+      setTimeout(() => setLocalDeletingIds(new Set()), 500);
+    }
+  };
+
+  // 重发弹窗触发
+  const handleResendSingle = (index: number) => setResendModal({ visible: true, targetIdx: index });
+
+  // 重发确认：始终用 props.messages，收集 index 及其之后所有消息的 id
+  const handleResendConfirm = async () => {
+    if (resendModal.targetIdx == null) return;
+    const idx = resendModal.targetIdx;
+    // 以props.messages为准，收集idx及其之后所有消息id
+    const idsToDelete: number[] = [];
+    for (let i = idx; i < messages.length; ++i) {
+      const id = messages[i]?.id;
+      if (typeof id === 'number') idsToDelete.push(id);
+    }
+    const targetMsg = messages[idx];
+    setResendLoading(true);
+    setLocalDeletingIds(new Set(idsToDelete));
+    try {
+      if (idsToDelete.length > 0) await deleteMessagesApi(idsToDelete);
+      // 自动填入输入框
+      if (onInputValueChange) onInputValueChange(getFullContent(targetMsg));
+      setTimeout(() => {
+        const textarea = document.querySelector('textarea');
+        if (textarea) textarea.focus();
+      }, 80);
+    } finally {
+      setResendLoading(false);
+      setResendModal({ visible: false, targetIdx: null });
+      setTimeout(() => setLocalDeletingIds(new Set()), 500);
+    }
+  };
 
   const handleSendTo = async (category_id: number, content: string) => {
     if (!conversationMeta?.projectId) {
@@ -135,7 +152,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     e: React.MouseEvent,
     groupIdx: number,
     msgIdx: number | null,
-    group: { role: string; msgs: Message[]; indices: number[] }
+    group: { role: string; msgs: Message[]; indices: number[]; ids: (number | undefined)[] }
   ) => {
     e.preventDefault();
 
@@ -173,6 +190,16 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         })),
       };
 
+      const resendMenu: MenuItem = {
+        label: '重发消息',
+        onClick: () => handleResendSingle(idx),
+      };
+
+      const deleteMenu: MenuItem = {
+        label: '删除',
+        onClick: () => handleDeleteSingle(idx),
+      };
+
       setContextMenu({
         x: e.clientX,
         y: e.clientY,
@@ -182,12 +209,19 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           { label: '保存', onClick: () => onSave(getFullContent(msg)) },
           sendToMenu,
           dynamicAction,
+          resendMenu,
+          deleteMenu,
         ],
       });
     } else {
       const allContent = group.msgs
         .map((msg) => trimEndLines(getFullContent(msg)))
         .join('\n------\n');
+
+      const deleteMenu: MenuItem = {
+        label: '删除组',
+        onClick: () => handleDeleteGroup(group.indices),
+      };
 
       const sendToMenu: MenuItem = {
         label: '发送到',
@@ -205,105 +239,26 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           { label: '复制', onClick: () => onCopy(allContent) },
           { label: '保存', onClick: () => onSave(allContent) },
           sendToMenu,
+          deleteMenu,
         ],
       });
     }
   };
 
-  const groups = groupMessages(messages);
+  // 过滤掉本地标记删除的气泡动画
+  const filteredMessages = messages.filter(
+    msg => !localDeletingIds.has(msg.id as number)
+  );
+  const groups = groupMessages(filteredMessages);
 
   return (
     <div>
-      {groups.map((group, groupIdx) => {
-        if (group.msgs.length === 1) {
-          const msg = group.msgs[0];
-          return (
-            <div
-              key={groupIdx}
-              className={`chat-msg ${msg.role}`}
-              ref={(el) => {
-                bubbleRefs.current[`${groupIdx}-0`] = el;
-              }}
-              onContextMenu={(e) => handleRightClick(e, groupIdx, 0, group)}
-            >
-              <div className="content">
-                {msg.collapsed
-                  ? (typeof msg.content === 'string'
-                      ? msg.content.slice(0, COLLAPSE_LENGTH)
-                      : String(msg.content)) + '...[右键展开]'
-                  : isWaitingTyping(msg)
-                  ? <span dangerouslySetInnerHTML={{ __html: msg.content }} />
-                  : <MarkdownRenderer content={String(msg.content)} />}
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <div
-            key={groupIdx}
-            className={`chat-group-bubble ${group.role}`}
-            style={{
-              marginBottom: 18,
-              borderRadius: 12,
-              border: '1.5px solid #e3eaf2',
-              padding: 10,
-              position: 'relative',
-              boxShadow: '0 2px 8px rgba(180,200,230,0.07)',
-              maxWidth: group.role === 'user' ? '75%' : '78%',
-              alignSelf: group.role === 'user' ? 'flex-end' : 'flex-start',
-            }}
-            onContextMenu={(e) => {
-              let found = false;
-              for (let i = 0; i < group.msgs.length; i++) {
-                const refKey = `${groupIdx}-${i}`;
-                if (
-                  bubbleRefs.current[refKey] &&
-                  bubbleRefs.current[refKey]?.contains(e.target as Node)
-                ) {
-                  found = true;
-                  handleRightClick(e, groupIdx, i, group);
-                  break;
-                }
-              }
-              if (!found) {
-                handleRightClick(e, groupIdx, null, group);
-              }
-            }}
-          >
-            {group.msgs.map((msg, i) => (
-              <div
-                key={i}
-                className={`chat-msg ${msg.role}`}
-                ref={(el) => {
-                  bubbleRefs.current[`${groupIdx}-${i}`] = el;
-                }}
-                style={{
-                  marginBottom: 10,
-                  background: msg.role === 'user'
-                    ? '#e8f0fe'
-                    : msg.role === 'assistant'
-                    ? '#f1f3f4'
-                    : '#f7f7f7',
-                  border: 'none',
-                  width: 'fit-content',
-                  maxWidth: '95%',
-                }}
-              >
-                <div className="content">
-                  {msg.collapsed
-                    ? (typeof msg.content === 'string'
-                        ? msg.content.slice(0, COLLAPSE_LENGTH)
-                        : String(msg.content)) + '...[右键展开]'
-                    : isWaitingTyping(msg)
-                    ? <span dangerouslySetInnerHTML={{ __html: msg.content }} />
-                    : <MarkdownRenderer content={String(msg.content)} />}
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      })}
+      <ChatBubbleGroup
+        groups={groups}
+        bubbleRefs={bubbleRefs}
+        onRightClick={handleRightClick}
+        onToggle={onToggle}
+      />
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
@@ -312,6 +267,12 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           onClose={() => setContextMenu(null)}
         />
       )}
+      <ResendConfirmModal
+        visible={resendModal.visible}
+        loading={resendLoading}
+        onConfirm={handleResendConfirm}
+        onCancel={() => setResendModal({ visible: false, targetIdx: null })}
+      />
     </div>
   );
 };
