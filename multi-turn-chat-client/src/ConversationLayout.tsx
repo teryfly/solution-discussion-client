@@ -5,7 +5,7 @@ import ConversationList from './ConversationList';
 import ChatBox from './ChatBox';
 import ChatInput from './ChatInput';
 import useConversations from './hooks/useConversations';
-import useChatStream, { createChatStream } from './useChatStream';
+import useChatStream, { threadManager } from './hooks/useChatStream';
 import { ROLE_CONFIGS } from './config';
 import { createConversation } from './api';
 
@@ -19,7 +19,7 @@ function ConversationLayout() {
   const {
     conversationId,
     setConversationId,
-    setConversationList, // ⭐️
+    setConversationList,
     messages,
     setMessages,
     model,
@@ -70,11 +70,18 @@ function ConversationLayout() {
   }
   const roleDesc = ROLE_CONFIGS[roleName]?.desc || '';
 
-  const { send, loading } = useChatStream(
+  const { send, loading, setActiveConversation } = useChatStream(
     conversationId,
     model,
     appendMessage
   );
+
+  // 当切换会话时，设置线程为活跃状态
+  useEffect(() => {
+    if (conversationId) {
+      setActiveConversation();
+    }
+  }, [conversationId, setActiveConversation]);
 
   const handleSend = () => {
     if (input.trim() && !loading) {
@@ -173,9 +180,10 @@ function ConversationLayout() {
       setMessages([]); // 清空消息区
 
       setTimeout(() => {
-        // 用 createChatStream 实现自动递归continue逻辑
-        const { send } = createChatStream(convId, roleModel, appendMessage, setRelayLoading);
-        send(relayContent);
+        // 使用新的线程管理器创建独立线程
+        const thread = threadManager.createThread(convId, appendMessage, setRelayLoading);
+        threadManager.setActiveThread(convId);
+        thread.send(relayContent, roleModel);
       }, 80);
 
     } catch (e) {
@@ -185,13 +193,24 @@ function ConversationLayout() {
     }
   };
 
+  // 会话切换时的处理
+  const handleConversationSelect = (id: string) => {
+    handleSelectConversation(id);
+    // 设置新的活跃线程
+    setTimeout(() => {
+      if (threadManager) {
+        threadManager.setActiveThread(id);
+      }
+    }, 100);
+  };
+
   // 关键：将 setInput 和 setMessages 传递给ChatBox
   return (
     <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
       <ConversationList
         conversations={conversationList}
         activeId={conversationId}
-        onSelect={handleSelectConversation}
+        onSelect={handleConversationSelect}
         onNew={handleNewConversation}
         onRename={handleRenameConversation}
         onDelete={handleDeleteConversation}
@@ -202,6 +221,10 @@ function ConversationLayout() {
         <div className="chat-toolbar">
           <span style={{ fontWeight: 'bold', color: '#1a73e8' }}>{roleName}</span>
           <span style={{ marginLeft: 12 }}>{roleDesc}</span>
+          {/* 显示当前会话的线程状态 */}
+          {conversationId && threadManager.isThreadActive(conversationId) && (
+            <span style={{ marginLeft: 12, color: '#4caf50', fontSize: '12px' }}>● 活跃线程</span>
+          )}
         </div>
         <div className="chat-box-wrapper" style={{ position: 'relative', flex: 1, minHeight: 0 }}>
           <div className="scroll-arrow top" onClick={scrollToTop}>⬆</div>
@@ -220,8 +243,8 @@ function ConversationLayout() {
                 name: currentMeta?.name,
               }}
               onRelayRole={handleRelayRole}
-              onInputValueChange={setInput}  // 关键：自动填充输入框
-              setMessages={setMessages}      // 关键：传递消息更新函数
+              onInputValueChange={setInput}
+              setMessages={setMessages}
             />
           </div>
           <div className="scroll-arrow bottom" onClick={handleScrollToBottom}>⬇</div>
