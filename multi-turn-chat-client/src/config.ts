@@ -2,7 +2,7 @@
 
 /** 自动 continue 最大轮数，防止死循环 */
 export const MAX_AUTO_CONTINUE_ROUNDS = 25;
-export const COLLAPSE_LENGTH = 80; // 折叠后显示字数
+export const COLLAPSE_LENGTH = 150; // 折叠后显示字数
 /** ✅ 后端服务基础地址 */
 export const BASE_URL = 'http://localhost:8000/v1';
 
