@@ -16,6 +16,7 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => (
           <CodeBlock
             language={match?.[1] || ''}
             code={String(children).replace(/\n$/, '')}
+            fullContent={content} // 传递完整内容用于路径解析
           />
         );
       },
