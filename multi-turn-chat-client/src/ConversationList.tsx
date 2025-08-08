@@ -71,6 +71,15 @@ const ConversationList: React.FC<Props> = ({
     setContextMenu({ x: e.clientX, y: e.clientY, id });
   };
 
+  // 新增：点击分类自动选中第一个会话
+  const handleProjectSelect = (project: string) => {
+    setSelectedProject(project);
+    const convs = grouped[project];
+    if (convs && convs.length > 0) {
+      onSelect(convs[0].id);
+    }
+  };
+
   const renderContextMenu = () => {
     if (!contextMenu) return null;
     const id = contextMenu.id;
@@ -125,7 +134,7 @@ const ConversationList: React.FC<Props> = ({
         {Object.keys(grouped).map(project => (
           <div
             key={project}
-            onClick={() => setSelectedProject(project)}
+            onClick={() => handleProjectSelect(project)}
             style={{
               padding: '8px 10px',
               cursor: 'pointer',

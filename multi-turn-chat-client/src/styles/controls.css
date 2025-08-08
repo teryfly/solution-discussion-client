@@ -1,0 +1,70 @@
+.chat-controls {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.chat-controls button {
+  line-height: 3.9;
+  height: 3.9em;
+  padding: 0 20px;
+  background-color: #1a73e8;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+button {
+  padding: 0 20px;
+  background-color: #1a73e8;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+button:hover {
+  background-color: #155ab6;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.chat-toolbar {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-toolbar label {
+  font-weight: bold;
+}
+
+.scroll-arrow {
+  position: absolute;
+  right: 10px;
+  z-index: 10;
+  font-size: 20px;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 4px 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: opacity 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.scroll-arrow.top {
+  top: 8px;
+}
+
+.scroll-arrow.bottom {
+  bottom: 8px;
+}

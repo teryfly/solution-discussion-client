@@ -1,20 +1,29 @@
 // ConversationLayout.tsx
 import React, { useRef, useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import ConversationList from './ConversationList';
 import ChatBox from './ChatBox';
 import ChatInput from './ChatInput';
+import StopButton from './components/StopButton';
 import useConversations from './hooks/useConversations';
 import useChatStream, { threadManager } from './hooks/useChatStream';
 import { ROLE_CONFIGS } from './config';
 import { createConversation } from './api';
 
+function getSessionIdFromQuery(search: string) {
+  const params = new URLSearchParams(search);
+  return params.get('session') || '';
+}
+
 function ConversationLayout() {
   const params = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const chatBoxRef = useRef<HTMLDivElement>(null);
 
   const [isAutoScroll, setIsAutoScroll] = useState(true);
+  const [inputVisible, setInputVisible] = useState(true);
+  const [showStop, setShowStop] = useState(false);
 
   const {
     conversationId,
@@ -43,23 +52,6 @@ function ConversationLayout() {
     appendMessage,
   } = useConversations({ chatBoxRef, params });
 
-  useEffect(() => {
-    if (!conversationId && conversationList.length > 0) {
-      const grouped = conversationList.reduce((acc, conv) => {
-        const key = conv.projectName || '其它';
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(conv);
-        return acc;
-      }, {} as Record<string, typeof conversationList>);
-
-      const firstProject = Object.keys(grouped)[0];
-      const firstConv = grouped[firstProject]?.[0];
-      if (firstConv) {
-        handleSelectConversation(firstConv.id);
-      }
-    }
-  }, [conversationId, conversationList]);
-
   const currentMeta = conversationList.find((c) => c.id === conversationId);
 
   let roleName: string = '通用助手';
@@ -70,11 +62,36 @@ function ConversationLayout() {
   }
   const roleDesc = ROLE_CONFIGS[roleName]?.desc || '';
 
-  const { send, loading, setActiveConversation } = useChatStream(
+  const { send, loading, setActiveConversation, stopStream } = useChatStream(
     conversationId,
     model,
     appendMessage
   );
+
+  // ========== 新增：URL同步逻辑 ==========
+  // 1. 切换会话时，URL加上 ?session=...
+  useEffect(() => {
+    if (conversationId) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('session', conversationId);
+      // 只在 session 变化时 push
+      if (getSessionIdFromQuery(location.search) !== conversationId) {
+        navigate(`${url.pathname}?session=${conversationId}`, { replace: true });
+      }
+    }
+    // eslint-disable-next-line
+  }, [conversationId]);
+
+  // 2. 页面初始载入时，如果有 ?session=xxx 则自动切换到对应会话
+  useEffect(() => {
+    const sessionId = getSessionIdFromQuery(location.search);
+    if (sessionId && sessionId !== conversationId) {
+      if (conversationList.find(c => c.id === sessionId)) {
+        setConversationId(sessionId);
+      }
+    }
+    // eslint-disable-next-line
+  }, [location.search, conversationList]);
 
   // 当切换会话时，设置线程为活跃状态
   useEffect(() => {
@@ -82,6 +99,17 @@ function ConversationLayout() {
       setActiveConversation();
     }
   }, [conversationId, setActiveConversation]);
+
+  // ========== 输入区域 visibility 控制 ==========
+  useEffect(() => {
+    if (loading) {
+      setInputVisible(false);
+      setShowStop(true);
+    } else {
+      setInputVisible(true);
+      setShowStop(false);
+    }
+  }, [loading]);
 
   const handleSend = () => {
     if (input.trim() && !loading) {
@@ -204,7 +232,12 @@ function ConversationLayout() {
     }, 100);
   };
 
-  // 关键：将 setInput 和 setMessages 传递给ChatBox
+  // 停止按钮点击
+  const handleStopClick = async () => {
+    setShowStop(false);
+    await stopStream?.();
+  };
+
   return (
     <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
       <ConversationList
@@ -217,7 +250,13 @@ function ConversationLayout() {
         onModelChange={handleModelChange}
         modelOptions={modelOptions}
       />
-      <div className="chat-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="chat-container" style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        ...(inputVisible ? {} : { height: '100vh', minHeight: 0, paddingBottom: 0 }),
+      }}>
         <div className="chat-toolbar">
           <span style={{ fontWeight: 'bold', color: '#1a73e8' }}>{roleName}</span>
           <span style={{ marginLeft: 12 }}>{roleDesc}</span>
@@ -226,12 +265,28 @@ function ConversationLayout() {
             <span style={{ marginLeft: 12, color: '#4caf50', fontSize: '12px' }}>● 活跃线程</span>
           )}
         </div>
-        <div className="chat-box-wrapper" style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <div className="chat-box-wrapper" style={{
+          position: 'relative',
+          flex: 1,
+          minHeight: 0,
+          ...(inputVisible
+            ? {}
+            : {
+                height: 'calc(100vh - 48px)', // toolbar高度
+                minHeight: 0,
+                paddingBottom: 0,
+              }),
+        }}>
           <div className="scroll-arrow top" onClick={scrollToTop}>⬆</div>
           <div
             className="chat-box"
             ref={chatBoxRef}
-            style={{ overflowY: 'auto', height: '100%', minHeight: 0 }}
+            style={{
+              overflowY: 'auto',
+              height: '100%',
+              minHeight: 0,
+              ...(inputVisible ? {} : { minHeight: '0', height: '100%' }),
+            }}
           >
             <ChatBox
               messages={messages}
@@ -249,12 +304,17 @@ function ConversationLayout() {
           </div>
           <div className="scroll-arrow bottom" onClick={handleScrollToBottom}>⬇</div>
         </div>
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSend={handleSend}
-          loading={loading}
-        />
+        {/* 输入区，仅在 inputVisible 时显示 */}
+        {inputVisible && (
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            loading={loading}
+          />
+        )}
+        {/* 悬浮停止按钮 */}
+        <StopButton visible={!inputVisible && showStop} onStop={handleStopClick} />
       </div>
     </div>
   );
