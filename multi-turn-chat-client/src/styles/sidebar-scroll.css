@@ -1,0 +1,40 @@
+/* 左侧项目分类和会话列表支持滚动 */
+.conversation-list {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.conversation-list > div:first-child {
+  width: 120px;
+  border-right: 1px solid #ccc;
+  height: 100vh;
+  overflow-y: auto;
+  min-height: 0;
+  background: #f7faff;
+  flex-shrink: 0;
+  padding-bottom: 40px;
+}
+
+.conversation-list > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  height: 100vh;
+  padding-left: 10px;
+  background: #f9f9fc;
+  padding-bottom: 40px;
+}
+
+/* 优化滚动条样式（可选） */
+.conversation-list > div::-webkit-scrollbar {
+  width: 8px;
+  background: #f3f3f8;
+}
+.conversation-list > div::-webkit-scrollbar-thumb {
+  background: #dbe7f7;
+  border-radius: 4px;
+}

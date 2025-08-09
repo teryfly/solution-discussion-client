@@ -1,0 +1,38 @@
+/* 左侧会话侧边栏整体可滚动，分组列表/会话列表溢出时支持滚动 */
+.conversation-list {
+  width: 250px;
+  flex-shrink: 0;
+  border-right: 1px solid #ddd;
+  padding-right: 10px;
+  margin-right: 20px;
+  height: 100vh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden; /* 防止外溢 */
+}
+
+.conversation-list > div:first-child {
+  flex-shrink: 0;
+}
+
+.conversation-list ul {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* 兼容项目分组/按钮滚动 */
+.conversation-list > div:last-child,
+.conversation-list > ul,
+.conversation-list > .conversation-list__project-list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+}

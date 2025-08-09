@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface CodeContentProps {
   code: string;
@@ -8,10 +8,29 @@ interface CodeContentProps {
 }
 
 const CodeContent: React.FC<CodeContentProps> = ({ code, language, lineNumbers, isComplete }) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef(0);
+
+  // 记录滚动位置
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      scrollPositionRef.current = scrollContainerRef.current.scrollTop;
+    }
+  };
+
+  // 组件更新后，保持之前的滚动位置
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+    }
+  });
+
   return (
     <>
       {/* 代码区 */}
       <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
         style={{
           maxHeight: '300px',
           overflow: 'auto',
