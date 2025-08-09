@@ -1,3 +1,5 @@
+import { SaveOption } from './types';
+
 // 复制代码内容
 export const handleCopyCode = (code: string, setCopied: (value: boolean) => void) => {
   navigator.clipboard.writeText(code).then(() => {
@@ -96,4 +98,14 @@ export const handleDirBlockCopy = async (
   } catch (err) {
     console.error('复制代码失败:', err);
   }
+};
+
+// 保存代码到指定平台（预留接口）
+export const handleSaveToService = async (
+  code: string,
+  fileName: string | undefined,
+  service: SaveOption
+): Promise<void> => {
+  console.log(`Saving ${fileName} to ${service}...`);
+  // 预留接口实现
 };

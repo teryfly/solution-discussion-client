@@ -243,7 +243,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
       };
 
       const resendMenu: MenuItem = {
-        label: '重发消息',
+        label: '编辑重发',
         onClick: () => handleResendSingle(idx),
       };
 

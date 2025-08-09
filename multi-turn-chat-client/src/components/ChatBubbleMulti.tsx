@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import BubbleActions from './BubbleActions';
 import MarkdownRenderer from './MarkdownRenderer';
-
 function isWaitingTyping(msg: Message) {
   return (
     msg.role === 'assistant' &&
@@ -10,12 +9,10 @@ function isWaitingTyping(msg: Message) {
     msg.content.startsWith('<span class="waiting-typing">')
   );
 }
-
 function getLineCount(content: string | undefined): number {
   if (!content) return 0;
   return content.split('\n').length;
 }
-
 function copyToClipboard(text: string) {
   if (navigator.clipboard && window.isSecureContext) {
     return navigator.clipboard.writeText(text);
@@ -35,7 +32,6 @@ function copyToClipboard(text: string) {
     return Promise.resolve();
   }
 }
-
 interface ChatBubbleMultiProps {
   groupIdx: number;
   group: any;
@@ -52,7 +48,6 @@ interface ChatBubbleMultiProps {
   triggerCopyAnim: (key: string) => void;
   COLLAPSE_LENGTH: number;
 }
-
 const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
   groupIdx,
   group,
@@ -64,85 +59,34 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
   triggerCopyAnim,
   COLLAPSE_LENGTH
 }) => {
-  const [hoveredMsgIndex, setHoveredMsgIndex] = useState<number | null>(null);
   const [visibleMsgIndex, setVisibleMsgIndex] = useState<number | null>(null);
   const [fixedMouseY, setFixedMouseY] = useState(0);
   const showTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const msgRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
-
   const handleMouseEnter = (e: React.MouseEvent, msgIndex: number) => {
-    // 清除隐藏定时器
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-    
-    // 只有在图标不可见或者切换到不同消息时才重新计算位置和设置显示定时器
+    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     if (visibleMsgIndex !== msgIndex && msgRefs.current[msgIndex]) {
       const rect = msgRefs.current[msgIndex]!.getBoundingClientRect();
       const relativeY = e.clientY - rect.top;
       setFixedMouseY(relativeY);
-      
-      // 1秒后显示图标
-      showTimeoutRef.current = setTimeout(() => {
-        setVisibleMsgIndex(msgIndex);
-      }, 1000);
+      showTimeoutRef.current = setTimeout(() => setVisibleMsgIndex(msgIndex), 1000);
     }
-    
-    setHoveredMsgIndex(msgIndex);
   };
-
   const handleMouseLeave = (e: React.MouseEvent) => {
-    // 检查是否移动到了图标区域
     const target = e.relatedTarget as HTMLElement;
-    if (target && target.closest('.bubble-actions')) {
-      return; // 如果移动到图标区域，不触发离开
-    }
-    
-    setHoveredMsgIndex(null);
-    
-    // 清除显示定时器
-    if (showTimeoutRef.current) {
-      clearTimeout(showTimeoutRef.current);
-      showTimeoutRef.current = null;
-    }
-    
-    // 1秒后隐藏图标
+    if (target && target.closest('.bubble-actions')) return;
+    if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current);
     hideTimeoutRef.current = setTimeout(() => {
       setVisibleMsgIndex(null);
     }, 1000);
   };
-
-  // 处理图标区域的鼠标事件
-  const handleActionsMouseEnter = () => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-    if (showTimeoutRef.current) {
-      clearTimeout(showTimeoutRef.current);
-      showTimeoutRef.current = null;
-    }
-  };
-
-  const handleActionsMouseLeave = () => {
-    hideTimeoutRef.current = setTimeout(() => {
-      setVisibleMsgIndex(null);
-    }, 1000);
-  };
-
   useEffect(() => {
     return () => {
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-      if (showTimeoutRef.current) {
-        clearTimeout(showTimeoutRef.current);
-      }
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current);
     };
   }, []);
-
   return (
     <div
       className={`chat-group-bubble ${group.role}`}
@@ -169,18 +113,15 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
             break;
           }
         }
-        if (!found) {
-          onRightClick(e, groupIdx, null, group);
-        }
+        if (!found) onRightClick(e, groupIdx, null, group);
       }}
     >
       {group.msgs.map((msg: any, i: number) => {
         const refKey = `${groupIdx}-${i}`;
-        const content = typeof msg.content === 'string' ? msg.content : String(msg.content);
+        const content = (typeof msg.content === 'string' ? msg.content : String(msg.content)).trim();
         const lineCount = getLineCount(content);
-        const showExpandIcon = lineCount > 1; // 只有多行才显示展开/折叠图标
+        const showExpandIcon = lineCount > 1;
         const isVisible = visibleMsgIndex === i;
-
         const handleCopy = () => {
           copyToClipboard(content);
           if (onCopy) onCopy(content);
@@ -190,12 +131,11 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
           onToggle(group.indices[i]);
         };
         const anim = !!(copyAnimMap && copyAnimMap[refKey]);
-        
         return (
           <div
             key={i}
             className={`chat-msg ${msg.role}`}
-            ref={el => { 
+            ref={el => {
               bubbleRefs.current[refKey] = el;
               msgRefs.current[i] = el;
             }}
@@ -204,8 +144,8 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
               background: msg.role === 'user'
                 ? '#e8f0fe'
                 : msg.role === 'assistant'
-                ? '#f1f3f4'
-                : '#f7f7f7',
+                  ? '#f1f3f4'
+                  : '#f7f7f7',
               border: 'none',
               width: 'fit-content',
               maxWidth: '95%',
@@ -216,31 +156,22 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
             onMouseLeave={handleMouseLeave}
             data-message-id={msg.id}
           >
-            <div 
-              onMouseEnter={handleActionsMouseEnter}
-              onMouseLeave={handleActionsMouseLeave}
-              style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
-            >
-              <BubbleActions
-                collapsed={!!msg.collapsed}
-                onToggle={handleToggle}
-                onCopy={handleCopy}
-                copyAnim={anim}
-                role={msg.role as 'user' | 'assistant'}
-                isVisible={isVisible}
-                mouseY={fixedMouseY}
-                showExpandIcon={showExpandIcon}
-              />
-            </div>
-            
+            <BubbleActions
+              collapsed={!!msg.collapsed}
+              onToggle={handleToggle}
+              onCopy={handleCopy}
+              copyAnim={anim}
+              role={msg.role as 'user' | 'assistant'}
+              isVisible={isVisible}
+              mouseY={fixedMouseY}
+              showExpandIcon={showExpandIcon}
+            />
             <div className="content">
               {msg.collapsed
-                ? (typeof msg.content === 'string'
-                    ? msg.content.slice(0, COLLAPSE_LENGTH)
-                    : String(msg.content)) + '...[右击展开]'
+                ? content.slice(0, COLLAPSE_LENGTH) + '...[右击展开]'
                 : isWaitingTyping(msg)
-                ? <span dangerouslySetInnerHTML={{ __html: msg.content }} />
-                : <MarkdownRenderer content={String(msg.content)} />}
+                  ? <span dangerouslySetInnerHTML={{ __html: msg.content }} />
+                  : <MarkdownRenderer content={content} />}
             </div>
           </div>
         );
@@ -248,5 +179,4 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
     </div>
   );
 };
-
 export default ChatBubbleMulti;

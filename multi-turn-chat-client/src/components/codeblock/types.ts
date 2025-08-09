@@ -16,3 +16,16 @@ export interface CodeBlockState {
   dirCopied: boolean;
   isComplete: boolean;
 }
+
+// 新增：代码显示模式
+export type CodeDisplayMode = 'expanded' | 'collapsed';
+
+// 新增：保存选项
+export type SaveOption = 'github' | 'gitlab';
+
+// 新增：代码块尺寸信息
+export interface CodeBlockDimensions {
+  isOverflow: boolean;
+  contentHeight: number;
+  maxHeight: number;
+}
