@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import useConversations from './useConversations';
 import useChatStream, { threadManager } from './useChatStream';
-import { useUrlSync } from './useUrlSync';
 import { useRoleRelay } from './useRoleRelay';
 export function useConversationLayout() {
   const params = useParams();
@@ -11,6 +10,9 @@ export function useConversationLayout() {
   const [inputVisible, setInputVisible] = useState(true);
   const [showStop, setShowStop] = useState(false);
   const {
+    projects,
+    selectedProjectId,
+    handleProjectSelect,
     conversationId,
     setConversationId,
     setConversationList,
@@ -37,20 +39,18 @@ export function useConversationLayout() {
     appendMessage,
   } = useConversations({ chatBoxRef, params });
   const currentMeta = conversationList.find((c) => c.id === conversationId);
-  const { send, loading, setActiveConversation, stopStream } = useChatStream(
-    conversationId,
-    model,
-    appendMessage
-  );
-  // URL同步
-  useUrlSync(conversationId, conversationList, setConversationId);
-  // 角色转交
+  // 角色转交（保持原有功能）
   const { handleRelayRole } = useRoleRelay(
     currentMeta,
     modelOptions,
     setConversationList,
     setConversationId,
     setMessages,
+    appendMessage
+  );
+  const { send, loading, setActiveConversation, stopStream } = useChatStream(
+    conversationId,
+    model,
     appendMessage
   );
   // 设置活跃会话
@@ -88,6 +88,10 @@ export function useConversationLayout() {
     }
   };
   return {
+    // 项目
+    projects,
+    selectedProjectId,
+    handleProjectSelect,
     // 状态
     conversationId,
     currentMeta,
@@ -113,7 +117,7 @@ export function useConversationLayout() {
     scrollToBottom,
     scrollToTop,
     appendMessage,
-    handleRelayRole,
+    handleRelayRole, // 保留并导出原有“转交角色”能力
     handleStopClick,
     handleSendMessage,
     setMessages,

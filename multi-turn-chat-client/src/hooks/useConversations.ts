@@ -9,12 +9,14 @@ import { ConversationMeta } from '../types';
 const DEFAULT_SYSTEM_PROMPT = '你是一个通用助手，能够处理各种任务和问题。';
 export default function useConversations({ chatBoxRef, params }: any) {
   const {
-    conversationList,
+    projects,
     setConversationList, // ⭐️暴露出来
+    refreshProjects,
     refreshConversations,
     renameConversation,
     removeConversation,
     updateModel,
+    conversationList,
   } = useConversationList();
   const {
     messages,
@@ -31,13 +33,20 @@ export default function useConversations({ chatBoxRef, params }: any) {
   const [conversationId, setConversationId] = useState('');
   const [model, setModel] = useState('');
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<number>(0);
   const inputCache = useRef<Record<string, string>>({});
   useEffect(() => {
     getModels().then(setModelOptions);
-    refreshConversations();
-    if (params.conversationId) {
-      setConversationId(params.conversationId);
-    }
+    (async () => {
+      const proj = await refreshProjects();
+      // 默认选择第一个项目（若存在）
+      const initialPid = proj.length > 0 ? proj[0].id : 0;
+      setSelectedProjectId(initialPid);
+      await refreshConversations(initialPid, 0);
+      if (params.conversationId) {
+        setConversationId(params.conversationId);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
@@ -65,6 +74,14 @@ export default function useConversations({ chatBoxRef, params }: any) {
     }
     setConversationId(id);
   };
+  const handleProjectSelect = async (projectId: number) => {
+    setSelectedProjectId(projectId);
+    await refreshConversations(projectId, 0);
+    // 切换项目时清空当前会话选择与输入
+    setConversationId('');
+    setMessages([]);
+    setInput('');
+  };
   const handleNewConversation = async (options: {
     name?: string;
     model: string;
@@ -84,8 +101,10 @@ export default function useConversations({ chatBoxRef, params }: any) {
       projectName: options.project_name || '其它',
       assistanceRole: options.role || '通用助手',
     };
-    // 新建会话插入到顶部
-    setConversationList((prev) => [newMeta, ...prev]);
+    // 若新建在当前项目下，插入到顶部
+    if (options.project_id === selectedProjectId) {
+      setConversationList((prev) => [newMeta, ...prev]);
+    }
     await setConversationIdAndLoad(id);
   };
   const handleSelectConversation = async (id: string) => {
@@ -98,7 +117,8 @@ export default function useConversations({ chatBoxRef, params }: any) {
     if (conversationId) {
       inputCache.current[conversationId] = input;
     }
-    await refreshConversations();
+    // 重新拉取当前项目的会话
+    await refreshConversations(selectedProjectId, 0);
     if (id === conversationId) {
       const updated = conversationList.filter((c) => c.id !== id);
       if (updated.length > 0) {
@@ -115,6 +135,10 @@ export default function useConversations({ chatBoxRef, params }: any) {
     if (id === conversationId) setModel(newModel);
   };
   return {
+    projects,
+    selectedProjectId,
+    setSelectedProjectId,
+    handleProjectSelect,
     conversationId,
     setConversationId,
     setConversationList, // ⭐️暴露

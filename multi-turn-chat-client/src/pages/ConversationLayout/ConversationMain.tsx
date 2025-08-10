@@ -6,12 +6,13 @@ import ChatInput from '../../ChatInput';
 import ConversationHeader from './ConversationHeader';
 import useConversationState from './useConversationState';
 import './styles.css';
-
 const ConversationMain: React.FC = () => {
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
-
   const {
+    projects,
+    selectedProjectId,
+    handleProjectSelect,
     conversationId,
     currentMeta,
     conversationList,
@@ -34,14 +35,12 @@ const ConversationMain: React.FC = () => {
     scrollToBottom,
     appendMessage,
   } = useConversationState(chatBoxRef);
-
   const handleSend = () => {
     if (input.trim() && !loading) {
       send(input);
       setInput('');
     }
   };
-
   useEffect(() => {
     if (isAutoScroll && chatBoxRef.current) {
       chatBoxRef.current.scrollTo({
@@ -50,7 +49,6 @@ const ConversationMain: React.FC = () => {
       });
     }
   }, [messages, isAutoScroll]);
-
   useEffect(() => {
     const box = chatBoxRef.current;
     if (!box) return;
@@ -61,7 +59,6 @@ const ConversationMain: React.FC = () => {
     box.addEventListener('scroll', onScroll);
     return () => box.removeEventListener('scroll', onScroll);
   }, []);
-
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -70,10 +67,12 @@ const ConversationMain: React.FC = () => {
     window.addEventListener('auto-send-msg', handler);
     return () => window.removeEventListener('auto-send-msg', handler);
   }, [send]);
-
   return (
     <div className="conversation-layout">
       <ConversationList
+        projects={projects}
+        selectedProjectId={selectedProjectId}
+        onProjectSelect={handleProjectSelect}
         conversations={conversationList}
         activeId={conversationId}
         onSelect={handleSelectConversation}
@@ -83,7 +82,6 @@ const ConversationMain: React.FC = () => {
         onModelChange={handleModelChange}
         modelOptions={modelOptions}
       />
-
       <div className="chat-container">
         <ConversationHeader meta={currentMeta} />
         <div className="chat-box-wrapper">
@@ -107,5 +105,4 @@ const ConversationMain: React.FC = () => {
     </div>
   );
 };
-
 export default ConversationMain;

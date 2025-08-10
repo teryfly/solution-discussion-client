@@ -7,6 +7,8 @@ import { useConversationLayout } from './hooks/useConversationLayout';
 function ConversationLayout() {
   const {
     // 状态
+    projects,
+    selectedProjectId,
     conversationId,
     currentMeta,
     conversationList,
@@ -18,6 +20,7 @@ function ConversationLayout() {
     showStop,
     location,
     // 方法
+    handleProjectSelect,
     setInput,
     handleNewConversation,
     handleConversationSelect,
@@ -37,6 +40,9 @@ function ConversationLayout() {
   return (
     <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
       <ConversationList
+        projects={projects}
+        selectedProjectId={selectedProjectId}
+        onProjectSelect={handleProjectSelect}
         conversations={conversationList}
         activeId={conversationId}
         onSelect={handleConversationSelect}

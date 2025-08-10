@@ -1,6 +1,5 @@
 // api.ts
 import { BASE_URL, API_KEY } from './config'; // ✅ 使用统一配置
-
 export async function createConversation(
   systemPrompt: string,
   projectId: number,
@@ -15,7 +14,6 @@ export async function createConversation(
     model,
     assistance_role: assistanceRole, 
   };
-
   const res = await fetch(`${BASE_URL}/chat/conversations`, {
     method: 'POST',
     headers: {
@@ -24,44 +22,51 @@ export async function createConversation(
     },
     body: JSON.stringify(body),
   });
-
   const data = await res.json();
   return data.conversation_id;
 }
-
 export async function deleteConversation(id: string): Promise<void> {
   await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
 }
-
 export async function updateConversationProject(id: string, projectId: number): Promise<void> {
   await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
-
     },
     body: JSON.stringify({ project_id: projectId }),
   });
 }
-
 export async function getGroupedConversations(): Promise<any> {
   const res = await fetch(`${BASE_URL}/chat/conversations/grouped`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
   return await res.json();
 }
-
 export async function getProjects(): Promise<{ id: number; name: string }[]> {
   const res = await fetch(`${BASE_URL}/projects`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
   return await res.json();
 }
-
+export async function getConversations(params: { project_id?: number; status?: number } = {}): Promise<any[]> {
+  const qs = new URLSearchParams();
+  if (typeof params.project_id === 'number') qs.set('project_id', String(params.project_id));
+  if (typeof params.status === 'number') qs.set('status', String(params.status));
+  const url = `${BASE_URL}/chat/conversations${qs.toString() ? `?${qs.toString()}` : ''}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取会话失败: ${res.status}`);
+  }
+  return await res.json();
+}
 export async function getMessages(
   conversationId: string
 ): Promise<Array<{ role: string; content: string }>> {
@@ -71,7 +76,6 @@ export async function getMessages(
   const data = await res.json();
   return data.messages;
 }
-
 export async function sendMessageStream(
   conversationId: string,
   content: string,
@@ -94,22 +98,17 @@ export async function sendMessageStream(
         stream: true,
       }),
     });
-
     if (!res.body || !res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-
     const reader = res.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
     let isFirstMessage = true;
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
       buffer += decoder.decode(value, { stream: true });
       const parts = buffer.split('\n\n');
       buffer = parts.pop() || '';
-
       for (const part of parts) {
         if (part.startsWith('data:')) {
           const json = part.slice(5).trim();
@@ -117,10 +116,8 @@ export async function sendMessageStream(
             onDone();
             return;
           }
-
           try {
             const payload = JSON.parse(json);
-            
             // 第一条消息包含ID信息
             if (isFirstMessage && (payload.user_message_id || payload.assistant_message_id)) {
               isFirstMessage = false;
@@ -130,7 +127,6 @@ export async function sendMessageStream(
                 conversation_id: payload.conversation_id
               });
             }
-            
             // 后续消息包含内容
             if (payload.content) {
               onChunk(payload.content);
@@ -146,7 +142,6 @@ export async function sendMessageStream(
     onError(err);
   }
 }
-
 export async function getModels(): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/models`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -154,33 +149,27 @@ export async function getModels(): Promise<string[]> {
   const data = await res.json();
   return data.data.map((m: any) => m.id);
 }
-
 // 添加以下两个方法 👇
-
 export async function updateConversationName(id: string, newName: string): Promise<void> {
   await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
-
     },
     body: JSON.stringify({ name: newName }),
   });
 }
-
 export async function updateConversationModel(id: string, model: string): Promise<void> {
   await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
-
     },
     body: JSON.stringify({ model }),
   });
 }
-
 // 计划分类API
 export async function getPlanCategories(): Promise<{ id: number; name: string }[]> {
   // 先查 localStorage
@@ -191,7 +180,6 @@ export async function getPlanCategories(): Promise<{ id: number; name: string }[
       categories = JSON.parse(cache);
     }
   } catch (e) {}
-
   // 请求服务端
   const res = await fetch(`${BASE_URL}/plan/categories`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -205,7 +193,6 @@ export async function getPlanCategories(): Promise<{ id: number; name: string }[
   localStorage.setItem('plan_categories', JSON.stringify(cleanData));
   return cleanData;
 }
-
 // 新建计划文档
 export async function createPlanDocument({
   project_id,
@@ -243,7 +230,6 @@ export async function createPlanDocument({
   }
   return await res.json();
 }
-
 export async function getCompleteSourceCode(projectId: number): Promise<string> {
   const res = await fetch(`${BASE_URL}/projects/${projectId}/complete-source-code`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
