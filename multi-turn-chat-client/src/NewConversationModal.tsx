@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getProjects, getCompleteSourceCode } from './api';
 import { ROLE_CONFIGS } from './config';
-
 // 默认生成会话名（格式 MMDDhhmmss）
 function generateDefaultName() {
   const now = new Date();
@@ -12,7 +11,6 @@ function generateDefaultName() {
   const ss = String(now.getSeconds()).padStart(2, '0');
   return `${MM}${DD}${hh}${mm}${ss}`;
 }
-
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -27,7 +25,6 @@ interface Props {
   modelOptions: string[];
   defaultProjectName?: string;
 }
-
 const NewConversationModal: React.FC<Props> = ({
   visible,
   onClose,
@@ -36,14 +33,13 @@ const NewConversationModal: React.FC<Props> = ({
   defaultProjectName
 }) => {
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
-  const [role, setRole] = useState('需求分析师');
+  const [role, setRole] = useState('软件架构师'); // 默认角色
   const [name, setName] = useState(generateDefaultName());
-  const [system, setSystem] = useState(ROLE_CONFIGS['需求分析师'].prompt);
-  const [model, setModel] = useState(ROLE_CONFIGS['需求分析师'].model);
+  const [system, setSystem] = useState(ROLE_CONFIGS['软件架构师'].prompt);
+  const [model, setModel] = useState(ROLE_CONFIGS['软件架构师'].model);
   const [projectId, setProjectId] = useState(0);
   const [modelList, setModelList] = useState<string[]>([]);
-  const [learnSourceCode, setLearnSourceCode] = useState(false); // ✅ 新增：是否学习项目源码
-
+  const [learnSourceCode, setLearnSourceCode] = useState(false); // ✅ 是否学习项目源码
   function getModelsAndSelect(role: string, modelOptions: string[]) {
     const defaultModel = ROLE_CONFIGS[role]?.model || '';
     let list = [...modelOptions];
@@ -54,14 +50,12 @@ const NewConversationModal: React.FC<Props> = ({
     }
     return { list, value };
   }
-
   useEffect(() => {
     if (visible) {
-      setRole('需求分析师');
+      setRole('软件架构师'); // 默认
       setName(generateDefaultName());
-      setSystem(ROLE_CONFIGS['需求分析师'].prompt);
+      setSystem(ROLE_CONFIGS['软件架构师'].prompt);
       setLearnSourceCode(false);
-
       getProjects().then((_projects) => {
         setProjects(_projects);
         let defaultId = 0;
@@ -71,13 +65,11 @@ const NewConversationModal: React.FC<Props> = ({
         }
         setProjectId(defaultId);
       });
-
-      const { list, value } = getModelsAndSelect('需求分析师', modelOptions);
+      const { list, value } = getModelsAndSelect('软件架构师', modelOptions);
       setModelList(list);
       setModel(value);
     }
   }, [visible, modelOptions, defaultProjectName]);
-
   const handleRoleChange = (r: string) => {
     setRole(r);
     setName(generateDefaultName());
@@ -89,12 +81,16 @@ const NewConversationModal: React.FC<Props> = ({
     const { list, value } = getModelsAndSelect(r, modelOptions);
     setModelList(list);
     setModel(value);
+    // 自动勾选“学习项目源码”
+    if (r === '敏捷开发工程师') {
+      setLearnSourceCode(true);
+    } else {
+      setLearnSourceCode(false);
+    }
   };
-
   const handleCreate = async () => {
     let finalSystem = system;
     const projectName = projects.find((p) => p.id === projectId)?.name || '其它';
-
     if (learnSourceCode && projectId > 0) {
       try {
         const completeSource = await getCompleteSourceCode(projectId);
@@ -104,7 +100,6 @@ const NewConversationModal: React.FC<Props> = ({
         return;
       }
     }
-
     onCreate({
       name,
       model,
@@ -115,9 +110,7 @@ const NewConversationModal: React.FC<Props> = ({
     });
     onClose();
   };
-
   if (!visible) return null;
-
   return (
     <div className="new-conversation-page">
       <div>
@@ -138,7 +131,6 @@ const NewConversationModal: React.FC<Props> = ({
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
         </div>
-
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label>相关项目：</label>
@@ -162,7 +154,6 @@ const NewConversationModal: React.FC<Props> = ({
             </select>
           </div>
         </div>
-
         <br />
         <div>
           <label className="inline-label">
@@ -174,7 +165,6 @@ const NewConversationModal: React.FC<Props> = ({
             学习项目源码(需确保项目工作路径设置正确，会增加token消耗)
           </label>
         </div>
-
         {role === '通用助手' && (
           <div>
             <label>System Prompt：</label>
@@ -185,7 +175,6 @@ const NewConversationModal: React.FC<Props> = ({
             />
           </div>
         )}
-
         <div className="modal-actions">
           <button onClick={handleCreate}>创建</button>
           <button onClick={onClose}>取消</button>
@@ -194,5 +183,4 @@ const NewConversationModal: React.FC<Props> = ({
     </div>
   );
 };
-
 export default NewConversationModal;

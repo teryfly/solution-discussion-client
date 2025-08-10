@@ -6,9 +6,7 @@ import useScroll from './useScroll';
 import useInput from './useInput';
 import { getModels, createConversation } from '../api';
 import { ConversationMeta } from '../types';
-
 const DEFAULT_SYSTEM_PROMPT = '你是一个通用助手，能够处理各种任务和问题。';
-
 export default function useConversations({ chatBoxRef, params }: any) {
   const {
     conversationList,
@@ -18,7 +16,6 @@ export default function useConversations({ chatBoxRef, params }: any) {
     removeConversation,
     updateModel,
   } = useConversationList();
-
   const {
     messages,
     setMessages,
@@ -29,16 +26,12 @@ export default function useConversations({ chatBoxRef, params }: any) {
     saveMessage,
     appendMessage,
   } = useMessages();
-
   const { input, setInput } = useInput();
   const { scrollToBottom, scrollToTop } = useScroll(chatBoxRef);
-
   const [conversationId, setConversationId] = useState('');
   const [model, setModel] = useState('');
   const [modelOptions, setModelOptions] = useState<string[]>([]);
-
   const inputCache = useRef<Record<string, string>>({});
-
   useEffect(() => {
     getModels().then(setModelOptions);
     refreshConversations();
@@ -47,7 +40,6 @@ export default function useConversations({ chatBoxRef, params }: any) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
@@ -67,14 +59,12 @@ export default function useConversations({ chatBoxRef, params }: any) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, conversationList]);
-
   const setConversationIdAndLoad = async (id: string) => {
     if (conversationId) {
       inputCache.current[conversationId] = input;
     }
     setConversationId(id);
   };
-
   const handleNewConversation = async (options: {
     name?: string;
     model: string;
@@ -85,7 +75,6 @@ export default function useConversations({ chatBoxRef, params }: any) {
   }) => {
     const systemPrompt = options.system || DEFAULT_SYSTEM_PROMPT;
     const id = await createConversation(systemPrompt, options.project_id, options.name, options.model, options.role);
-
     const newMeta: ConversationMeta = {
       id,
       model: options.model,
@@ -95,26 +84,21 @@ export default function useConversations({ chatBoxRef, params }: any) {
       projectName: options.project_name || '其它',
       assistanceRole: options.role || '通用助手',
     };
-
-    setConversationList((prev) => [...prev, newMeta]);
+    // 新建会话插入到顶部
+    setConversationList((prev) => [newMeta, ...prev]);
     await setConversationIdAndLoad(id);
   };
-
   const handleSelectConversation = async (id: string) => {
     await setConversationIdAndLoad(id);
   };
-
   const handleRenameConversation = (id: string, newName: string) => {
     renameConversation(id, newName);
   };
-
   const handleDeleteConversation = async (id: string) => {
     if (conversationId) {
       inputCache.current[conversationId] = input;
     }
-
     await refreshConversations();
-
     if (id === conversationId) {
       const updated = conversationList.filter((c) => c.id !== id);
       if (updated.length > 0) {
@@ -126,12 +110,10 @@ export default function useConversations({ chatBoxRef, params }: any) {
       }
     }
   };
-
   const handleModelChange = (id: string, newModel: string) => {
     updateModel(id, newModel);
     if (id === conversationId) setModel(newModel);
   };
-
   return {
     conversationId,
     setConversationId,

@@ -159,8 +159,8 @@ A code file should not exceed 150 lines, or it should be refactored into multipl
     "model": "GPT-4.1",
     "desc": "请提供详细设计文档及开发任务。目标是输出可部署的详细代码文件。",
   },
-   "二开工程师": {
-  "prompt": `You are an advanced programmer specializing in secondary development. When given a requirement:
+   "敏捷开发工程师": {
+"prompt": `You are an advanced programmer specializing in secondary development. When given a requirement:
 
 **If any requirement details are unclear, ask questions first. Otherwise, provide complete code following the strict output format below with NO explanations or summaries.**
 
