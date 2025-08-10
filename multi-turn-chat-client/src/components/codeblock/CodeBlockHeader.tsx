@@ -2,16 +2,16 @@ import React, { useRef } from 'react';
 import { FilePathInfo, CodeBlockDimensions } from './types';
 import { handleFileBlockCopy, handleDirBlockCopy, handleCopyCode } from './copyHandlers';
 import { useProject } from '../../context/ProjectContext';
-import { buildDisplayFileName } from '../../utils/pathHelpers';
+import { buildDisplayFileName, buildFullPath } from '../../utils/pathHelpers'; // 引入 buildFullPath
 interface CodeBlockHeaderProps {
   fileInfo: FilePathInfo;
   code: string;
   lineCount: number;
   isComplete: boolean;
-  copied: boolean;              // 右侧“复制代码”按钮动画
-  fileNameCopied: boolean;      // 文件名块动画
-  dirCopied: boolean;           // 路径块动画
-  saved: boolean;               // 保存按钮动画
+  copied: boolean;
+  fileNameCopied: boolean;
+  dirCopied: boolean;
+  saved: boolean;
   dimensions: CodeBlockDimensions;
   setCopied: (value: boolean) => void;
   setFileNameCopied: (value: boolean) => void;
@@ -42,7 +42,7 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
     handleFileBlockCopy(code, fileName, setCopied, setFileNameCopied, setDirCopied);
   const handleDirCopy = () =>
     handleDirBlockCopy(code, dirPath, fileName, setCopied, setFileNameCopied, setDirCopied);
-  // 保存到本地，仅在保存成功后“保存”按钮变绿；不参与多重复制动画
+  // 保存到本地
   const handleSaveLocal = async () => {
     if (!fileName) {
       alert('无法确定默认文件名');
@@ -50,7 +50,18 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
     }
     try {
       const aiWorkDir = getAiWorkDir();
-      const displayName = buildDisplayFileName(aiWorkDir, dirPath, fileName) || fileName;
+      // 拼接真实完整路径（aiWorkDir + dirPath + fileName）
+      let fullPath = fileName;
+      if (aiWorkDir) {
+        fullPath = buildFullPath(aiWorkDir, dirPath, fileName);
+      }
+      // 将完整路径复制到剪切板
+      try {
+        await navigator.clipboard.writeText(fullPath);
+      } catch (e) {
+        console.warn('复制完整路径到剪贴板失败:', e);
+      }
+      const suggestedName = '请直接粘贴完整路径(CTRL+V)';
       if ('showSaveFilePicker' in window) {
         const extMatch = fileName.match(/\.([a-zA-Z0-9]+)$/);
         const extension = extMatch ? `.${extMatch[1]}` : '';
@@ -65,7 +76,7 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
           : extension === '.md' ? 'text/markdown'
           : 'text/plain';
         const opts = {
-          suggestedName: displayName,
+          suggestedName,
           types: [
             extension
               ? {
@@ -91,7 +102,7 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = displayName;
+        a.download = suggestedName;
         a.click();
         URL.revokeObjectURL(url);
         setSaved(true);
