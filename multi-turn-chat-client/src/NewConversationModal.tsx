@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getProjects, getCompleteSourceCode } from './api';
 import { ROLE_CONFIGS } from './config';
 // 默认生成会话名（格式 MMDDhhmmss）
@@ -40,6 +40,7 @@ const NewConversationModal: React.FC<Props> = ({
   const [projectId, setProjectId] = useState(0);
   const [modelList, setModelList] = useState<string[]>([]);
   const [learnSourceCode, setLearnSourceCode] = useState(false); // ✅ 是否学习项目源码
+  const containerRef = useRef<HTMLDivElement>(null);
   function getModelsAndSelect(role: string, modelOptions: string[]) {
     const defaultModel = ROLE_CONFIGS[role]?.model || '';
     let list = [...modelOptions];
@@ -110,9 +111,35 @@ const NewConversationModal: React.FC<Props> = ({
     });
     onClose();
   };
+  // 键盘快捷键支持（Enter=创建，Esc=取消）
+  useEffect(() => {
+    if (!visible) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        if (
+          document.activeElement &&
+          (document.activeElement.tagName === 'INPUT' ||
+            document.activeElement.tagName === 'SELECT' ||
+            document.activeElement.tagName === 'TEXTAREA')
+        ) {
+          // 避免在文本域换行
+          if (document.activeElement.tagName === 'TEXTAREA' && !e.ctrlKey && !e.metaKey) return;
+        }
+        e.preventDefault();
+        handleCreate();
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+    // eslint-disable-next-line
+  }, [visible, name, model, system, projectId, learnSourceCode, projects, role, modelOptions, modelList]);
   if (!visible) return null;
   return (
-    <div className="new-conversation-page">
+    <div className="new-conversation-page" ref={containerRef}>
       <div>
         <h2 style={{ textAlign: 'center', marginBottom: 30 }}>新建会话</h2>
         <div style={{ display: 'flex', gap: 12 }}>

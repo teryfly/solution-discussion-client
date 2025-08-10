@@ -1,20 +1,34 @@
-import React from 'react';
-
+import React, { useEffect } from 'react';
 interface ResendConfirmModalProps {
   visible: boolean;
   loading: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
-
 const ResendConfirmModal: React.FC<ResendConfirmModalProps> = ({
   visible,
   loading,
   onConfirm,
   onCancel,
 }) => {
+  // 键盘快捷键支持
+  useEffect(() => {
+    if (!visible) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onConfirm();
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+    // eslint-disable-next-line
+  }, [visible, loading, onConfirm, onCancel]);
   if (!visible) return null;
-
   return (
     <div
       style={{
@@ -60,5 +74,4 @@ const ResendConfirmModal: React.FC<ResendConfirmModalProps> = ({
     </div>
   );
 };
-
 export default ResendConfirmModal;
