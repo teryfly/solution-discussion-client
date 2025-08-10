@@ -4,6 +4,7 @@ import ConversationHeader from './components/ConversationHeader';
 import ChatArea from './components/ChatArea';
 import InputArea from './components/InputArea';
 import { useConversationLayout } from './hooks/useConversationLayout';
+import { ProjectProvider } from './context/ProjectContext';
 function ConversationLayout() {
   const {
     // 状态
@@ -37,58 +38,61 @@ function ConversationLayout() {
     handleSendMessage,
     setMessages,
   } = useConversationLayout();
+  const currentProjectId = currentMeta?.projectId ?? selectedProjectId;
   return (
-    <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
-      <ConversationList
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        onProjectSelect={handleProjectSelect}
-        conversations={conversationList}
-        activeId={conversationId}
-        onSelect={handleConversationSelect}
-        onNew={handleNewConversation}
-        onRename={handleRenameConversation}
-        onDelete={handleDeleteConversation}
-        onModelChange={handleModelChange}
-        modelOptions={modelOptions}
-      />
-      <div className="chat-container" style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0,
-        ...(inputVisible ? {} : { height: '100vh', minHeight: 0, paddingBottom: 0 }),
-      }}>
-        <ConversationHeader
-          currentMeta={currentMeta}
-          conversationId={conversationId}
-          location={location}
+    <ProjectProvider projects={projects as any} currentProjectId={currentProjectId}>
+      <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
+        <ConversationList
+          projects={projects}
+          selectedProjectId={selectedProjectId}
+          onProjectSelect={handleProjectSelect}
+          conversations={conversationList}
+          activeId={conversationId}
+          onSelect={handleConversationSelect}
+          onNew={handleNewConversation}
+          onRename={handleRenameConversation}
+          onDelete={handleDeleteConversation}
+          onModelChange={handleModelChange}
+          modelOptions={modelOptions}
         />
-        <ChatArea
-          messages={messages}
-          currentMeta={currentMeta}
-          inputVisible={inputVisible}
-          onToggle={toggleCollapse}
-          onCopy={copyMessage}
-          onSave={saveMessage}
-          onRelayRole={handleRelayRole}
-          onInputValueChange={setInput}
-          setMessages={setMessages}
-          onScrollToTop={scrollToTop}
-          onScrollToBottom={scrollToBottom}
-          conversationId={conversationId}
-        />
-        <InputArea
-          inputVisible={inputVisible}
-          showStop={showStop}
-          input={input}
-          loading={loading}
-          onInputChange={setInput}
-          onSend={handleSendMessage}
-          onStop={handleStopClick}
-        />
+        <div className="chat-container" style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          ...(inputVisible ? {} : { height: '100vh', minHeight: 0, paddingBottom: 0 }),
+        }}>
+          <ConversationHeader
+            currentMeta={currentMeta}
+            conversationId={conversationId}
+            location={location}
+          />
+          <ChatArea
+            messages={messages}
+            currentMeta={currentMeta}
+            inputVisible={inputVisible}
+            onToggle={toggleCollapse}
+            onCopy={copyMessage}
+            onSave={saveMessage}
+            onRelayRole={handleRelayRole}
+            onInputValueChange={setInput}
+            setMessages={setMessages}
+            onScrollToTop={scrollToTop}
+            onScrollToBottom={scrollToBottom}
+            conversationId={conversationId}
+          />
+          <InputArea
+            inputVisible={inputVisible}
+            showStop={showStop}
+            input={input}
+            loading={loading}
+            onInputChange={setInput}
+            onSend={handleSendMessage}
+            onStop={handleStopClick}
+          />
+        </div>
       </div>
-    </div>
+    </ProjectProvider>
   );
 }
 export default ConversationLayout;

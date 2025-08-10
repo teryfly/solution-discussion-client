@@ -1,5 +1,6 @@
 // api.ts
-import { BASE_URL, API_KEY } from './config'; // ✅ 使用统一配置
+import { BASE_URL, API_KEY } from './config';
+import type { Project } from './types';
 export async function createConversation(
   systemPrompt: string,
   projectId: number,
@@ -12,7 +13,7 @@ export async function createConversation(
     project_id: projectId,
     name,
     model,
-    assistance_role: assistanceRole, 
+    assistance_role: assistanceRole,
   };
   const res = await fetch(`${BASE_URL}/chat/conversations`, {
     method: 'POST',
@@ -22,17 +23,25 @@ export async function createConversation(
     },
     body: JSON.stringify(body),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `创建会话失败: ${res.status}`);
+  }
   const data = await res.json();
   return data.conversation_id;
 }
 export async function deleteConversation(id: string): Promise<void> {
-  await fetch(`${BASE_URL}/chat/conversations/${id}`, {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `删除会话失败: ${res.status}`);
+  }
 }
 export async function updateConversationProject(id: string, projectId: number): Promise<void> {
-  await fetch(`${BASE_URL}/chat/conversations/${id}`, {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -40,18 +49,31 @@ export async function updateConversationProject(id: string, projectId: number): 
     },
     body: JSON.stringify({ project_id: projectId }),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `更新会话项目失败: ${res.status}`);
+  }
 }
 export async function getGroupedConversations(): Promise<any> {
   const res = await fetch(`${BASE_URL}/chat/conversations/grouped`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取分组会话失败: ${res.status}`);
+  }
   return await res.json();
 }
-export async function getProjects(): Promise<{ id: number; name: string }[]> {
+export async function getProjects(): Promise<Project[]> {
   const res = await fetch(`${BASE_URL}/projects`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
-  return await res.json();
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取项目列表失败: ${res.status}`);
+  }
+  const data = await res.json();
+  return data || [];
 }
 export async function getConversations(params: { project_id?: number; status?: number } = {}): Promise<any[]> {
   const qs = new URLSearchParams();
@@ -69,10 +91,14 @@ export async function getConversations(params: { project_id?: number; status?: n
 }
 export async function getMessages(
   conversationId: string
-): Promise<Array<{ role: string; content: string }>> {
+): Promise<Array<{ id?: number; role: string; content: string }>> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取消息失败: ${res.status}`);
+  }
   const data = await res.json();
   return data.messages;
 }
@@ -80,7 +106,7 @@ export async function sendMessageStream(
   conversationId: string,
   content: string,
   model: string,
-  onChunk: (text: string, metadata?: { user_message_id?: number; assistant_message_id?: number; conversation_id?: string }) => void,
+  onChunk: (text: string, metadata?: { user_message_id?: number; assistant_message_id?: number; conversation_id?: string; session_id?: string }) => void,
   onDone: () => void,
   onError: (err: any) => void
 ) {
@@ -110,30 +136,28 @@ export async function sendMessageStream(
       const parts = buffer.split('\n\n');
       buffer = parts.pop() || '';
       for (const part of parts) {
-        if (part.startsWith('data:')) {
-          const json = part.slice(5).trim();
-          if (json === '[DONE]') {
-            onDone();
-            return;
+        if (!part.startsWith('data:')) continue;
+        const json = part.slice(5).trim();
+        if (json === '[DONE]') {
+          onDone();
+          return;
+        }
+        try {
+          const payload = JSON.parse(json);
+          if (isFirstMessage && (payload.user_message_id || payload.assistant_message_id)) {
+            isFirstMessage = false;
+            onChunk('', {
+              user_message_id: payload.user_message_id,
+              assistant_message_id: payload.assistant_message_id,
+              conversation_id: payload.conversation_id,
+              session_id: payload.session_id,
+            });
           }
-          try {
-            const payload = JSON.parse(json);
-            // 第一条消息包含ID信息
-            if (isFirstMessage && (payload.user_message_id || payload.assistant_message_id)) {
-              isFirstMessage = false;
-              onChunk('', {
-                user_message_id: payload.user_message_id,
-                assistant_message_id: payload.assistant_message_id,
-                conversation_id: payload.conversation_id
-              });
-            }
-            // 后续消息包含内容
-            if (payload.content) {
-              onChunk(payload.content);
-            }
-          } catch (err) {
-            console.warn('解析 SSE 错误:', err, json);
+          if (payload.content) {
+            onChunk(payload.content);
           }
+        } catch (err) {
+          console.warn('解析 SSE 错误:', err, json);
         }
       }
     }
@@ -146,12 +170,15 @@ export async function getModels(): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/models`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取模型失败: ${res.status}`);
+  }
   const data = await res.json();
   return data.data.map((m: any) => m.id);
 }
-// 添加以下两个方法 👇
 export async function updateConversationName(id: string, newName: string): Promise<void> {
-  await fetch(`${BASE_URL}/chat/conversations/${id}`, {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -159,9 +186,13 @@ export async function updateConversationName(id: string, newName: string): Promi
     },
     body: JSON.stringify({ name: newName }),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `更新会话名称失败: ${res.status}`);
+  }
 }
 export async function updateConversationModel(id: string, model: string): Promise<void> {
-  await fetch(`${BASE_URL}/chat/conversations/${id}`, {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -169,10 +200,13 @@ export async function updateConversationModel(id: string, model: string): Promis
     },
     body: JSON.stringify({ model }),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `更新模型失败: ${res.status}`);
+  }
 }
 // 计划分类API
 export async function getPlanCategories(): Promise<{ id: number; name: string }[]> {
-  // 先查 localStorage
   const cache = localStorage.getItem('plan_categories');
   let categories: { id: number; name: string }[] = [];
   try {
@@ -180,12 +214,14 @@ export async function getPlanCategories(): Promise<{ id: number; name: string }[
       categories = JSON.parse(cache);
     }
   } catch (e) {}
-  // 请求服务端
   const res = await fetch(`${BASE_URL}/plan/categories`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取分类失败: ${res.status}`);
+  }
   const data = await res.json();
-  // 只取 id 和 name 存储
   const cleanData = (data || []).map((item: any) => ({
     id: item.id,
     name: item.name,
@@ -225,8 +261,8 @@ export async function createPlanDocument({
     }),
   });
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || '新建文档失败');
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as any)?.detail || (err as any)?.message || '新建文档失败');
   }
   return await res.json();
 }
@@ -234,6 +270,10 @@ export async function getCompleteSourceCode(projectId: number): Promise<string> 
   const res = await fetch(`${BASE_URL}/projects/${projectId}/complete-source-code`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取项目源码失败: ${res.status}`);
+  }
   const data = await res.json();
   return data.completeSourceCode || '';
 }

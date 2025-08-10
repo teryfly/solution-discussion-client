@@ -1,18 +1,22 @@
 import React, { useRef } from 'react';
 import { FilePathInfo, CodeBlockDimensions } from './types';
 import { handleFileBlockCopy, handleDirBlockCopy, handleCopyCode } from './copyHandlers';
+import { useProject } from '../../context/ProjectContext';
+import { buildDisplayFileName } from '../../utils/pathHelpers';
 interface CodeBlockHeaderProps {
   fileInfo: FilePathInfo;
   code: string;
   lineCount: number;
   isComplete: boolean;
-  copied: boolean;
-  fileCopied: boolean;
-  dirCopied: boolean;
+  copied: boolean;              // 右侧“复制代码”按钮动画
+  fileNameCopied: boolean;      // 文件名块动画
+  dirCopied: boolean;           // 路径块动画
+  saved: boolean;               // 保存按钮动画
   dimensions: CodeBlockDimensions;
   setCopied: (value: boolean) => void;
-  setFileCopied: (value: boolean) => void;
+  setFileNameCopied: (value: boolean) => void;
   setDirCopied: (value: boolean) => void;
+  setSaved: (value: boolean) => void;
 }
 const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
   fileInfo,
@@ -20,26 +24,33 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
   lineCount,
   isComplete,
   copied,
-  fileCopied,
+  fileNameCopied,
   dirCopied,
+  saved,
   dimensions,
   setCopied,
-  setFileCopied,
+  setFileNameCopied,
   setDirCopied,
+  setSaved,
 }) => {
   const { dirPath, fileName } = fileInfo;
   const { isOverflow } = dimensions;
   const saveAnimTimeout = useRef<NodeJS.Timeout | null>(null);
+  const { getAiWorkDir } = useProject();
   const handleCopy = () => handleCopyCode(code, setCopied);
-  const handleFileCopy = () => handleFileBlockCopy(code, fileName, setCopied, setFileCopied, setDirCopied);
-  const handleDirCopy = () => handleDirBlockCopy(code, dirPath, fileName, setCopied, setFileCopied, setDirCopied);
-  // 保存到本地，保存成功后按钮变绿动画，无alert
+  const handleFileCopy = () =>
+    handleFileBlockCopy(code, fileName, setCopied, setFileNameCopied, setDirCopied);
+  const handleDirCopy = () =>
+    handleDirBlockCopy(code, dirPath, fileName, setCopied, setFileNameCopied, setDirCopied);
+  // 保存到本地，仅在保存成功后“保存”按钮变绿；不参与多重复制动画
   const handleSaveLocal = async () => {
     if (!fileName) {
       alert('无法确定默认文件名');
       return;
     }
     try {
+      const aiWorkDir = getAiWorkDir();
+      const displayName = buildDisplayFileName(aiWorkDir, dirPath, fileName) || fileName;
       if ('showSaveFilePicker' in window) {
         const extMatch = fileName.match(/\.([a-zA-Z0-9]+)$/);
         const extension = extMatch ? `.${extMatch[1]}` : '';
@@ -54,7 +65,7 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
           : extension === '.md' ? 'text/markdown'
           : 'text/plain';
         const opts = {
-          suggestedName: fileName,
+          suggestedName: displayName,
           types: [
             extension
               ? {
@@ -72,21 +83,20 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
         const writable = await handle.createWritable();
         await writable.write(code);
         await writable.close();
-        // 动画
-        setFileCopied(true);
+        setSaved(true);
         if (saveAnimTimeout.current) clearTimeout(saveAnimTimeout.current);
-        saveAnimTimeout.current = setTimeout(() => setFileCopied(false), 1200);
+        saveAnimTimeout.current = setTimeout(() => setSaved(false), 1200);
       } else {
         const blob = new Blob([code], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = fileName;
+        a.download = displayName;
         a.click();
         URL.revokeObjectURL(url);
-        setFileCopied(true);
+        setSaved(true);
         if (saveAnimTimeout.current) clearTimeout(saveAnimTimeout.current);
-        saveAnimTimeout.current = setTimeout(() => setFileCopied(false), 1200);
+        saveAnimTimeout.current = setTimeout(() => setSaved(false), 1200);
       }
     } catch (e: any) {
       if (e.name !== 'AbortError') {
@@ -164,8 +174,8 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
             onClick={handleFileCopy}
             style={{
               padding: '2px 6px',
-              background: fileCopied ? '#4caf50' : '#e0e7ee',
-              color: fileCopied ? '#fff' : '#222',
+              background: fileNameCopied ? '#4caf50' : '#e0e7ee',
+              color: fileNameCopied ? '#fff' : '#222',
               borderRadius: 5,
               fontSize: 13,
               fontWeight: 700,
@@ -197,7 +207,7 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
             <button
               onClick={handleSaveLocal}
               style={{
-                background: fileCopied ? '#4caf50' : '#1a73e8',
+                background: saved ? '#4caf50' : '#1a73e8',
                 color: '#fff',
                 border: 'none',
                 padding: '4px',
@@ -249,7 +259,7 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
             <button
               onClick={handleSaveLocal}
               style={{
-                background: fileCopied ? '#4caf50' : '#1a73e8',
+                background: saved ? '#4caf50' : '#1a73e8',
                 color: '#fff',
                 border: 'none',
                 padding: '4px',

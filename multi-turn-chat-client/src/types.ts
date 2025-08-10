@@ -21,6 +21,7 @@ export type PlanCategory = {
 export type Project = {
   id: number;
   name: string;
-  // 预留更多字段（后端可能返回描述、owner等）
-  [key: string]: any;
+  ai_work_dir?: string;      // 后端字段
+  aiWorkDir?: string;        // 兼容可能的驼峰形式
+  [key: string]: any;        // 预留更多字段（后端可能返回描述、owner等）
 };
