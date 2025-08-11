@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { FilePathInfo, CodeBlockDimensions } from './types';
 import { handleFileBlockCopy, handleDirBlockCopy, handleCopyCode } from './copyHandlers';
 import { useProject } from '../../context/ProjectContext';
-import { buildDisplayFileName, buildFullPath } from '../../utils/pathHelpers'; // 引入 buildFullPath
+import { buildDisplayFileName, buildFullPath } from '../../utils/pathHelpers';
 interface CodeBlockHeaderProps {
   fileInfo: FilePathInfo;
   code: string;
@@ -17,7 +17,34 @@ interface CodeBlockHeaderProps {
   setFileNameCopied: (value: boolean) => void;
   setDirCopied: (value: boolean) => void;
   setSaved: (value: boolean) => void;
+  onToggleExpand?: () => void; // 新增：展开/折叠回调
 }
+// 眼睛图标组件（展开/折叠）
+const EyeIcon: React.FC<{ isExpanded: boolean }> = ({ isExpanded }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    {isExpanded ? (
+      // 睁眼图标
+      <>
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ) : (
+      // 闭眼图标
+      <>
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+      </>
+    )}
+  </svg>
+);
+// 新窗口图标组件（斜箭头）
+const ExternalLinkIcon: React.FC = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15,3 21,3 21,9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </svg>
+);
 const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
   fileInfo,
   code,
@@ -32,9 +59,10 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
   setFileNameCopied,
   setDirCopied,
   setSaved,
+  onToggleExpand,
 }) => {
   const { dirPath, fileName } = fileInfo;
-  const { isOverflow } = dimensions;
+  const { isOverflow, isExpanded = false } = dimensions;
   const saveAnimTimeout = useRef<NodeJS.Timeout | null>(null);
   const { getAiWorkDir } = useProject();
   const handleCopy = () => handleCopyCode(code, setCopied);
@@ -50,12 +78,10 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
     }
     try {
       const aiWorkDir = getAiWorkDir();
-      // 拼接真实完整路径（aiWorkDir + dirPath + fileName）
       let fullPath = fileName;
       if (aiWorkDir) {
         fullPath = buildFullPath(aiWorkDir, dirPath, fileName);
       }
-      // 将完整路径复制到剪切板
       try {
         await navigator.clipboard.writeText(fullPath);
       } catch (e) {
@@ -116,6 +142,7 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
     }
   };
   const handleGit = () => window.alert('开发中...');
+  // 新窗口查看（添加行号和高亮）
   const handleView = () => {
     const escapeHtml = (text: string) => {
       const div = document.createElement('div');
@@ -123,6 +150,7 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
       return div.innerHTML;
     };
     const escapedCode = escapeHtml(code);
+    const language = fileName?.split('.').pop() || 'plaintext';
     const newWindow = window.open('', '_blank');
     if (newWindow) {
       newWindow.document.write(`
@@ -132,9 +160,61 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
             <title>${fileName || 'Code View'}</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+            <style>
+              body {
+                margin: 0;
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                background: #f8f9fa;
+              }
+              .code-container {
+                display: flex;
+                background: white;
+                border-radius: 8px;
+                margin: 20px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                overflow: hidden;
+              }
+              .line-numbers {
+                background: #f0f0f6;
+                color: #aaa;
+                text-align: right;
+                padding: 16px 12px;
+                border-right: 1px solid #e3e3e8;
+                min-width: 60px;
+                font-size: 14px;
+                line-height: 1.5;
+                user-select: none;
+                white-space: pre;
+              }
+              .code-content {
+                flex: 1;
+                padding: 16px;
+                overflow: auto;
+                font-size: 14px;
+                line-height: 1.5;
+              }
+              .code-content pre {
+                margin: 0;
+                white-space: pre-wrap;
+                word-break: break-word;
+              }
+              .header {
+                background: #1a73e8;
+                color: white;
+                padding: 12px 20px;
+                font-weight: 500;
+                margin: 0;
+              }
+            </style>
           </head>
           <body>
-            <pre><code class="language-${fileName?.split('.').pop() || 'plaintext'}">${escapedCode}</code></pre>
+            <div class="header">${fileName || 'Code View'}</div>
+            <div class="code-container">
+              <div class="line-numbers">${code.split('\n').map((_, i) => i + 1).join('\n')}</div>
+              <div class="code-content">
+                <pre><code class="language-${language}">${escapedCode}</code></pre>
+              </div>
+            </div>
             <script>hljs.highlightAll();</script>
           </body>
         </html>
@@ -253,6 +333,25 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
             {isComplete ? `共${lineCount}行代码` : `正在写入第${lineCount}行代码`}
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
+            {onToggleExpand && (
+              <button
+                onClick={onToggleExpand}
+                style={{
+                  background: '#1a73e8',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '4px 6px',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title={isExpanded ? '折叠代码' : '展开代码'}
+              >
+                <EyeIcon isExpanded={isExpanded} />
+              </button>
+            )}
             <button
               onClick={handleCopy}
               style={{
@@ -302,13 +401,16 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
                 background: '#1a73e8',
                 color: '#fff',
                 border: 'none',
-                padding: '4px',
+                padding: '4px 6px',
                 borderRadius: 4,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
-              title="查看"
+              title="新窗口查看"
             >
-              👀
+              <ExternalLinkIcon />
             </button>
           </div>
         </div>

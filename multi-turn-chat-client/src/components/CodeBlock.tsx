@@ -1,29 +1,52 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { CodeBlockProps, CodeBlockDimensions } from './codeblock/types';
-import { extractFilePath, getLineNumbers, isCodeBlockComplete } from './codeblock/pathUtils';
+import { extractFilePath, getLineNumbers, isCodeBlockComplete, shouldShowCodeBlock } from './codeblock/pathUtils';
 import CodeBlockHeader from './codeblock/CodeBlockHeader';
 import CodeContent from './codeblock/CodeContent';
 const CodeBlock: React.FC<CodeBlockProps> = ({ language = '', code, fullContent }) => {
-  const [copied, setCopied] = useState(false);           // 右侧复制按钮动画
-  const [fileNameCopied, setFileNameCopied] = useState(false); // 文件名块动画
-  const [dirCopied, setDirCopied] = useState(false);     // 路径块动画
-  const [saved, setSaved] = useState(false);             // 保存按钮动画（与复制解耦）
+  // 检查是否应该显示代码块
+  if (!shouldShowCodeBlock(code)) {
+    return <span style={{ fontFamily: 'monospace', color: '#666' }}>```</span>;
+  }
+  const [copied, setCopied] = useState(false);
+  const [fileNameCopied, setFileNameCopied] = useState(false);
+  const [dirCopied, setDirCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false); // 新增：展开状态
   const [dimensions, setDimensions] = useState<CodeBlockDimensions>({
     isOverflow: false,
     contentHeight: 0,
-    maxHeight: 300
+    maxHeight: 300,
+    isExpanded: false
   });
   // 解析路径和文件名
   const fileInfo = useMemo(() => extractFilePath(code, fullContent), [code, fullContent]);
-  // 检查代码块是否完整（基于成对的```标记）
+  // 检查代码块是否完整
   const isComplete = useMemo(() => isCodeBlockComplete(fullContent, code), [fullContent, code]);
   // 渲染行号
   const lineNumbers = getLineNumbers(code);
   // 处理维度变化
   const handleDimensionsChange = useCallback((newDimensions: CodeBlockDimensions) => {
-    setDimensions(newDimensions);
+    setDimensions(prev => ({
+      ...newDimensions,
+      isExpanded: prev.isExpanded
+    }));
   }, []);
-  // 固定宽度为 800px；不设置最小宽度
+  // 切换展开/折叠状态
+  const handleToggleExpand = useCallback(() => {
+    setIsExpanded(prev => {
+      const newExpanded = !prev;
+      setDimensions(prev => ({
+        ...prev,
+        isExpanded: newExpanded
+      }));
+      return newExpanded;
+    });
+  }, []);
+  const effectiveDimensions = {
+    ...dimensions,
+    isExpanded
+  };
   return (
     <div
       style={{
@@ -48,17 +71,19 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language = '', code, fullContent 
         fileNameCopied={fileNameCopied}
         dirCopied={dirCopied}
         saved={saved}
-        dimensions={dimensions}
+        dimensions={effectiveDimensions}
         setCopied={setCopied}
         setFileNameCopied={setFileNameCopied}
         setDirCopied={setDirCopied}
         setSaved={setSaved}
+        onToggleExpand={dimensions.isOverflow ? handleToggleExpand : undefined}
       />
       <CodeContent
         code={code}
         language={language}
         lineNumbers={lineNumbers}
         isComplete={isComplete}
+        isExpanded={isExpanded}
         onDimensionsChange={handleDimensionsChange}
       />
     </div>

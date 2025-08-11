@@ -5,6 +5,7 @@ interface CodeContentProps {
   language: string;
   lineNumbers: number[];
   isComplete: boolean;
+  isExpanded?: boolean; // 新增：是否展开状态
   onDimensionsChange: (dimensions: CodeBlockDimensions) => void;
 }
 const MAX_HEIGHT = 300;
@@ -13,6 +14,7 @@ const CodeContent: React.FC<CodeContentProps> = ({
   language,
   lineNumbers,
   isComplete,
+  isExpanded = false, // 新增：默认不展开
   onDimensionsChange
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -48,12 +50,13 @@ const CodeContent: React.FC<CodeContentProps> = ({
         onDimensionsChange({
           isOverflow: isContentOverflow,
           contentHeight,
-          maxHeight: MAX_HEIGHT
+          maxHeight: MAX_HEIGHT,
+          isExpanded
         });
       }
     };
     checkOverflow();
-  }, [code, onDimensionsChange]);
+  }, [code, isExpanded, onDimensionsChange]);
   if (!isInitialized) {
     return (
       <div
@@ -76,15 +79,18 @@ const CodeContent: React.FC<CodeContentProps> = ({
       </div>
     );
   }
-  if (isOverflow) {
+  // 如果内容溢出且未展开，则隐藏内容
+  if (isOverflow && !isExpanded) {
     return null;
   }
+  // 确定最大高度：如果展开则不限制高度，否则使用默认最大高度
+  const effectiveMaxHeight = isExpanded ? 'none' : MAX_HEIGHT;
   return (
     <div
       ref={contentRef}
       style={{
-        maxHeight: MAX_HEIGHT,
-        overflow: 'auto',
+        maxHeight: effectiveMaxHeight,
+        overflow: isExpanded ? 'auto' : 'auto',
         display: 'flex',
         fontSize: 14,
         lineHeight: 1.5,
