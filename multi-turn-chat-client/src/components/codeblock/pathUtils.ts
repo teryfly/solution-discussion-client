@@ -58,14 +58,16 @@ export function extractFilePath(code: string, fullContent?: string): FilePathInf
   let nearestFilePathIndex = -1;
   for (let i = codeStartIndex - 1; i >= 0; i--) {
     const line = fullLines[i].trim();
-    if (line.startsWith('File Path:')) {
+    if (line.startsWith('File Path:') || line.startsWith('File:')) {
       nearestFilePathIndex = i;
       break; // 找到最近的就停止
     }
   }
   if (nearestFilePathIndex === -1) return {};
   const filePathLine = fullLines[nearestFilePathIndex].trim();
-  const value = filePathLine.slice('File Path:'.length).trim();
+  // 支持 "File Path:" 和 "File:" 两种前缀
+  const prefix = filePathLine.startsWith('File Path:') ? 'File Path:' : 'File:';
+  const value = filePathLine.slice(prefix.length).trim();
   if (!value) return {};
   const sepIdx = Math.max(value.lastIndexOf('/'), value.lastIndexOf('\\'));
   if (sepIdx === -1) {

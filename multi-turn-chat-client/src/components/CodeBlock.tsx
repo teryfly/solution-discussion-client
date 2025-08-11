@@ -34,7 +34,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language = '', code, fullContent 
         marginTop: 0,
         marginBottom: 0,
         background: '#f7f7f9',
-        width: '800px',
+        width: '600px',
         overflow: 'hidden',
         boxSizing: 'border-box',
       }}

@@ -21,7 +21,13 @@ export type PlanCategory = {
 export type Project = {
   id: number;
   name: string;
-  ai_work_dir?: string;      // 后端字段
-  aiWorkDir?: string;        // 兼容可能的驼峰形式
-  [key: string]: any;        // 预留更多字段（后端可能返回描述、owner等）
+  dev_environment?: string;
+  grpc_server_address?: string;
+  llm_model?: string;
+  llm_url?: string;
+  git_work_dir?: string;
+  ai_work_dir?: string;
+  created_time?: string;
+  updated_time?: string;
+  [key: string]: any;
 };

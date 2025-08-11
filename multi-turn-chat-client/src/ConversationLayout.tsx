@@ -37,6 +37,7 @@ function ConversationLayout() {
     handleStopClick,
     handleSendMessage,
     setMessages,
+    refreshProjects, // 新增：项目刷新方法
   } = useConversationLayout();
   const currentProjectId = currentMeta?.projectId ?? selectedProjectId;
   return (
@@ -54,6 +55,7 @@ function ConversationLayout() {
           onDelete={handleDeleteConversation}
           onModelChange={handleModelChange}
           modelOptions={modelOptions}
+          onProjectUpdate={refreshProjects} // 传递项目更新回调
         />
         <div className="chat-container" style={{
           flex: 1,

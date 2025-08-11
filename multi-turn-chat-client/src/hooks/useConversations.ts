@@ -148,6 +148,7 @@ export default function useConversations({ chatBoxRef, params }: any) {
     setModel,
     modelOptions,
     conversationList,
+    refreshProjects,
     refreshConversations,
     loadConversation: async (meta: ConversationMeta) => {
       if (conversationId) {

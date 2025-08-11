@@ -22,6 +22,7 @@ export function useConversationLayout() {
     setModel,
     modelOptions,
     conversationList,
+    refreshProjects,
     refreshConversations,
     loadConversation,
     handleNewConversation,
@@ -121,5 +122,6 @@ export function useConversationLayout() {
     handleStopClick,
     handleSendMessage,
     setMessages,
+    refreshProjects, // 新增：项目刷新方法
   };
 }

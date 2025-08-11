@@ -1,18 +1,16 @@
 // ConversationList.tsx
 import React, { useState } from 'react'; 
-import { ConversationMeta } from './types';
+import { ConversationMeta, Project } from './types';
 import ContextMenu, { MenuItem } from './ContextMenu';
 import NewConversationModal from './NewConversationModal';
+import ProjectManagement from './components/ProjectManagement';
 import { useLocation } from 'react-router-dom';
 import {
   updateConversationName,
   updateConversationModel,
   deleteConversation,
+  deleteProject,
 } from './api';
-interface Project {
-  id: number;
-  name: string;
-}
 interface Props {
   projects: Project[];
   selectedProjectId: number;
@@ -25,6 +23,7 @@ interface Props {
   onDelete: (id: string) => void;
   onModelChange: (id: string, newModel: string) => void;
   modelOptions: string[];
+  onProjectUpdate?: () => void; // 项目更新后的回调
 }
 const ConversationList: React.FC<Props> = ({
   projects,
@@ -38,13 +37,49 @@ const ConversationList: React.FC<Props> = ({
   onDelete,
   onModelChange,
   modelOptions,
+  onProjectUpdate,
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  const [projectContextMenu, setProjectContextMenu] = useState<{ x: number; y: number; projectId: number } | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showProjectManagement, setShowProjectManagement] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<number | undefined>();
   const location = useLocation();
   const handleContextMenu = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, id });
+  };
+  const handleProjectContextMenu = (e: React.MouseEvent, projectId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setProjectContextMenu({ x: e.clientX, y: e.clientY, projectId });
+  };
+  const handleProjectEdit = (projectId: number) => {
+    setEditingProjectId(projectId);
+    setShowProjectManagement(true);
+    setProjectContextMenu(null);
+  };
+  const handleProjectDelete = async (projectId: number) => {
+    const project = projects.find(p => p.id === projectId);
+    // const projectName = project?.name || '未知项目';
+    if (window.confirm(`确定要删除项目「${project?.name || '未知项目'}」吗？此操作不可恢复！`)) {
+      try {
+        await deleteProject(projectId);
+        // alert('项目删除成功！');
+        onProjectUpdate?.();
+      } catch (err) {
+        // alert('删除项目失败: ' + (err?.message || err));
+      }
+    }
+    setProjectContextMenu(null);
+  };
+  const handleNewProject = () => {
+    setEditingProjectId(undefined);
+    setShowProjectManagement(true);
+  };
+  const handleProjectManagementSuccess = () => {
+    onProjectUpdate?.();
+    setShowProjectManagement(false);
   };
   const renderContextMenu = () => {
     if (!contextMenu) return null;
@@ -92,34 +127,78 @@ const ConversationList: React.FC<Props> = ({
       />
     );
   };
+  const renderProjectContextMenu = () => {
+    if (!projectContextMenu) return null;
+    return (
+      <ContextMenu
+        x={projectContextMenu.x}
+        y={projectContextMenu.y}
+        onClose={() => setProjectContextMenu(null)}
+        items={[
+          {
+            label: '编辑',
+            onClick: () => handleProjectEdit(projectContextMenu.projectId),
+          },
+          {
+            label: '删除',
+            onClick: () => handleProjectDelete(projectContextMenu.projectId),
+          },
+        ]}
+      />
+    );
+  };
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const defaultProjectName = selectedProject?.name || '其它';
+  // 将"其它"项目移到最后
+  const sortedProjects = [...projects].sort((a, b) => {
+    if (a.id === 0) return 1; // "其它"排到最后
+    if (b.id === 0) return -1;
+    return 0; // 保持其他项目的原有顺序
+  });
   return (
     <div className="conversation-list" style={{ display: 'flex' }}>
       {/* 左列：项目列表（来自 /v1/projects） */}
       <div style={{ width: '120px', borderRight: '1px solid #ccc' }}>
-        {projects.map(project => (
+        <button
+          onClick={handleNewProject}
+          style={{ 
+            marginBottom: 12, 
+            width: '100%',
+            fontSize: '12px',
+            padding: '6px 8px'
+          }}
+        >
+          新建项目
+        </button>
+        {sortedProjects.map(project => (
           <div
             key={project.id}
             onClick={() => onProjectSelect(project.id)}
+            onContextMenu={(e) => project.id !== 0 ? handleProjectContextMenu(e, project.id) : undefined}
             style={{
               padding: '8px 10px',
               cursor: 'pointer',
               background: selectedProjectId === project.id ? '#d0e4ff' : undefined,
+              position: 'relative',
             }}
           >
             {project.name}
           </div>
         ))}
-        <button
-          onClick={() => setShowNewModal(true)}
-          style={{ marginTop: 12 }}
-        >
-          ➕ 新建
-        </button>
       </div>
       {/* 右列：当前项目下的会话（status==0） */}
       <div style={{ flex: 1, paddingLeft: 10 }}>
+        <button
+          onClick={() => setShowNewModal(true)}
+          style={{ 
+            marginBottom: 12, 
+            width: '100%',
+            fontSize: '14px',
+            padding: '8px 12px'
+          }}
+        >
+          新建会话
+        </button>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {conversations.map((conv) => (
             <li
@@ -146,6 +225,7 @@ const ConversationList: React.FC<Props> = ({
         </ul>
       </div>
       {renderContextMenu()}
+      {renderProjectContextMenu()}
       <NewConversationModal
         visible={showNewModal}
         onClose={() => setShowNewModal(false)}
@@ -154,6 +234,12 @@ const ConversationList: React.FC<Props> = ({
         }}
         modelOptions={modelOptions}
         defaultProjectName={defaultProjectName}
+      />
+      <ProjectManagement
+        visible={showProjectManagement}
+        onClose={() => setShowProjectManagement(false)}
+        projectId={editingProjectId}
+        onSuccess={handleProjectManagementSuccess}
       />
     </div>
   );

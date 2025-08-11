@@ -1,16 +1,15 @@
 // useConversationList.ts
 import { useState } from 'react';
 import { getProjects, getConversations } from '../api';
-import { ConversationMeta } from '../types';
-type Project = { id: number; name: string };
+import { ConversationMeta, Project } from '../types';
 export default function useConversationList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [conversationList, setConversationList] = useState<ConversationMeta[]>([]);
   // 刷新项目列表（左侧列）
   const refreshProjects = async () => {
     const list = await getProjects();
-    // 增加“其它”项目到顶部（id=0）
-    const merged: Project[] = [{ id: 0, name: '其它' }, ...list.filter(p => p.id !== 0)];
+    // 增加"其它"项目（id=0）
+    const merged: Project[] = [{ id: 0, name: '其它' } as Project, ...list.filter(p => p.id !== 0)];
     setProjects(merged);
     return merged;
   };

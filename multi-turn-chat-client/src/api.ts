@@ -75,6 +75,78 @@ export async function getProjects(): Promise<Project[]> {
   const data = await res.json();
   return data || [];
 }
+export async function getProjectDetail(id: number): Promise<Project> {
+  const res = await fetch(`${BASE_URL}/projects/${id}`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取项目详情失败: ${res.status}`);
+  }
+  return await res.json();
+}
+export async function createProject(projectData: {
+  name: string;
+  dev_environment: string;
+  grpc_server_address: string;
+  llm_model?: string;
+  llm_url?: string;
+  git_work_dir?: string;
+  ai_work_dir?: string;
+}): Promise<Project> {
+  const res = await fetch(`${BASE_URL}/projects`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({
+      llm_model: 'GPT-4.1',
+      llm_url: 'http://43.132.224.225:8000/v1/chat/completions',
+      git_work_dir: '/git_workspace',
+      ai_work_dir: '/aiWorkDir',
+      ...projectData,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `创建项目失败: ${res.status}`);
+  }
+  return await res.json();
+}
+export async function updateProject(id: number, projectData: Partial<{
+  name: string;
+  dev_environment: string;
+  grpc_server_address: string;
+  llm_model: string;
+  llm_url: string;
+  git_work_dir: string;
+  ai_work_dir: string;
+}>): Promise<Project> {
+  const res = await fetch(`${BASE_URL}/projects/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify(projectData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `更新项目失败: ${res.status}`);
+  }
+  return await res.json();
+}
+export async function deleteProject(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/projects/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `删除项目失败: ${res.status}`);
+  }
+}
 export async function getConversations(params: { project_id?: number; status?: number } = {}): Promise<any[]> {
   const qs = new URLSearchParams();
   if (typeof params.project_id === 'number') qs.set('project_id', String(params.project_id));
