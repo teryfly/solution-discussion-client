@@ -1,4 +1,11 @@
 import { FilePathInfo } from './types';
+// 支持的路径前缀
+const PATH_PREFIXES = [
+  'File Path:',
+  'File:',
+  'Relative path:',
+  'Specify the file relative path:',
+];
 // 从完整内容中查找当前代码块对应的File Path
 export function extractFilePath(code: string, fullContent?: string): FilePathInfo {
   if (!fullContent) return {};
@@ -54,20 +61,23 @@ export function extractFilePath(code: string, fullContent?: string): FilePathInf
     }
   }
   if (codeStartIndex === -1) return {};
-  // 从代码块位置向上查找最近的File Path:
-  let nearestFilePathIndex = -1;
+  // 从代码块位置向上查找最近的路径前缀
+  let nearestPathIndex = -1;
+  let matchedPrefix: string | null = null;
   for (let i = codeStartIndex - 1; i >= 0; i--) {
     const line = fullLines[i].trim();
-    if (line.startsWith('File Path:') || line.startsWith('File:')) {
-      nearestFilePathIndex = i;
-      break; // 找到最近的就停止
+    for (const prefix of PATH_PREFIXES) {
+      if (line.startsWith(prefix)) {
+        nearestPathIndex = i;
+        matchedPrefix = prefix;
+        break;
+      }
     }
+    if (nearestPathIndex !== -1) break;
   }
-  if (nearestFilePathIndex === -1) return {};
-  const filePathLine = fullLines[nearestFilePathIndex].trim();
-  // 支持 "File Path:" 和 "File:" 两种前缀
-  const prefix = filePathLine.startsWith('File Path:') ? 'File Path:' : 'File:';
-  const value = filePathLine.slice(prefix.length).trim();
+  if (nearestPathIndex === -1 || !matchedPrefix) return {};
+  const filePathLine = fullLines[nearestPathIndex].trim();
+  const value = filePathLine.slice(matchedPrefix.length).trim();
   if (!value) return {};
   const sepIdx = Math.max(value.lastIndexOf('/'), value.lastIndexOf('\\'));
   if (sepIdx === -1) {
