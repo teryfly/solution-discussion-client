@@ -1,8 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { FilePathInfo, CodeBlockDimensions } from './types';
 import { handleFileBlockCopy, handleDirBlockCopy, handleCopyCode } from './copyHandlers';
 import { useProject } from '../../context/ProjectContext';
 import { buildDisplayFileName, buildFullPath } from '../../utils/pathHelpers';
+import { navigationManager } from '../../utils/codeBlockNavigation';
 interface CodeBlockHeaderProps {
   fileInfo: FilePathInfo;
   code: string;
@@ -64,17 +65,48 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
   const { dirPath, fileName } = fileInfo;
   const { isOverflow, isExpanded = false } = dimensions;
   const saveAnimTimeout = useRef<NodeJS.Timeout | null>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+  const saveButtonOverflowRef = useRef<HTMLButtonElement>(null);
   const { getAiWorkDir } = useProject();
+  // 注册/注销保存按钮到导航管理器
+  useEffect(() => {
+    const currentSaveButton = isOverflow ? saveButtonOverflowRef.current : saveButtonRef.current;
+    if (currentSaveButton) {
+      navigationManager.registerSaveButton(currentSaveButton);
+    }
+    return () => {
+      if (currentSaveButton) {
+        navigationManager.unregisterSaveButton(currentSaveButton);
+      }
+    };
+  }, [isOverflow]);
+  // 组件卸载时清理
+  useEffect(() => {
+    return () => {
+      const normalButton = saveButtonRef.current;
+      const overflowButton = saveButtonOverflowRef.current;
+      if (normalButton) {
+        navigationManager.unregisterSaveButton(normalButton);
+      }
+      if (overflowButton) {
+        navigationManager.unregisterSaveButton(overflowButton);
+      }
+    };
+  }, []);
   const handleCopy = () => handleCopyCode(code, setCopied);
   const handleFileCopy = () =>
     handleFileBlockCopy(code, fileName, setCopied, setFileNameCopied, setDirCopied);
   const handleDirCopy = () =>
     handleDirBlockCopy(code, dirPath, fileName, setCopied, setFileNameCopied, setDirCopied);
   // 保存到本地
-  const handleSaveLocal = async () => {
+  const handleSaveLocal = async (buttonRef: React.RefObject<HTMLButtonElement>) => {
     if (!fileName) {
       alert('无法确定默认文件名');
       return;
+    }
+    // 激活键盘导航
+    if (buttonRef.current) {
+      navigationManager.activateNavigation(buttonRef.current);
     }
     try {
       const aiWorkDir = getAiWorkDir();
@@ -296,7 +328,8 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
               📋
             </button>
             <button
-              onClick={handleSaveLocal}
+              ref={saveButtonRef}
+              onClick={() => handleSaveLocal(saveButtonRef)}
               style={{
                 background: saved ? '#4caf50' : '#1a73e8',
                 color: '#fff',
@@ -367,7 +400,8 @@ const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
               📋
             </button>
             <button
-              onClick={handleSaveLocal}
+              ref={saveButtonOverflowRef}
+              onClick={() => handleSaveLocal(saveButtonOverflowRef)}
               style={{
                 background: saved ? '#4caf50' : '#1a73e8',
                 color: '#fff',

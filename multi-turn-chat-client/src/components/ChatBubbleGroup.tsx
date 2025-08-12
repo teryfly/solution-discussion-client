@@ -1,12 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Message } from '../types';
 import { COLLAPSE_LENGTH } from '../config';
 import useCopyAnimMap from '../hooks/useCopyAnimMap';
 import ChatBubbleSingle from './ChatBubbleSingle';
 import ChatBubbleMulti from './ChatBubbleMulti';
-
+import { navigationManager } from '../utils/codeBlockNavigation';
 type MessageWithId = Message & { id?: number };
-
 export function groupMessages(messages: MessageWithId[]) {
   const groups: Array<{
     role: string,
@@ -29,7 +28,6 @@ export function groupMessages(messages: MessageWithId[]) {
   });
   return groups;
 }
-
 interface ChatBubbleGroupProps {
   groups: ReturnType<typeof groupMessages>;
   bubbleRefs: React.MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
@@ -45,7 +43,6 @@ interface ChatBubbleGroupProps {
   onRelay?: (role: string, content: string) => void;
   onSendTo?: (categoryId: number, content: string) => void;
 }
-
 const ChatBubbleGroup: React.FC<ChatBubbleGroupProps> = ({
   groups,
   bubbleRefs,
@@ -57,15 +54,23 @@ const ChatBubbleGroup: React.FC<ChatBubbleGroupProps> = ({
   onSendTo,
 }) => {
   const { copyAnimMap = {}, triggerCopyAnim } = useCopyAnimMap();
-
+  // 当组件卸载或消息变化时，清理导航管理器
+  useEffect(() => {
+    return () => {
+      // 组件卸载时停用键盘导航
+      navigationManager.deactivateNavigation();
+    };
+  }, []);
+  // 当消息组发生变化时，停用当前的键盘导航
+  useEffect(() => {
+    navigationManager.deactivateNavigation();
+  }, [groups]);
   const handleSingleDelete = (idx: number) => {
     onDelete?.([idx]);
   };
-
   const handleGroupDelete = (indices: number[]) => {
     onDelete?.(indices);
   };
-
   return (
     <>
       {groups.map((group, groupIdx) => (
@@ -108,5 +113,4 @@ const ChatBubbleGroup: React.FC<ChatBubbleGroupProps> = ({
     </>
   );
 };
-
 export default ChatBubbleGroup;
