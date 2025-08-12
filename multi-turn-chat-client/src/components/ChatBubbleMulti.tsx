@@ -32,6 +32,12 @@ function copyToClipboard(text: string) {
     return Promise.resolve();
   }
 }
+// 计算文本字数（中文按1字符，英文按0.5字符计算）
+function getTextCharCount(text: string): number {
+  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+  const otherChars = text.replace(/[\u4e00-\u9fff]/g, '').length;
+  return Math.ceil(chineseChars + otherChars * 0.5);
+}
 interface ChatBubbleMultiProps {
   groupIdx: number;
   group: any;
@@ -44,6 +50,9 @@ interface ChatBubbleMultiProps {
   ) => void;
   onToggle: (idx: number) => void;
   onCopy?: (text: string) => void;
+  onDelete?: (indices: number[]) => void;
+  onRelay?: (role: string, content: string) => void;
+  onSendTo?: (categoryId: number, categoryName: string, content: string) => void;
   copyAnimMap?: { [key: string]: boolean };
   triggerCopyAnim: (key: string) => void;
   COLLAPSE_LENGTH: number;
@@ -55,6 +64,9 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
   onRightClick,
   onToggle,
   onCopy,
+  onDelete,
+  onRelay,
+  onSendTo,
   copyAnimMap = {},
   triggerCopyAnim,
   COLLAPSE_LENGTH
