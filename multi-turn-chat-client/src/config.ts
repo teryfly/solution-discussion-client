@@ -12,6 +12,21 @@ export const API_KEY = 'sk-test';
 /** ✅ 角色预置配置：包含 System Prompt、默认模型和角色说明 */
 const USER_FEADBAK= '如果有不明确、不清楚或不合理的地方就要求用户在下一轮对话中进一步解释、明确或更正。如果你有更好的建议或意见也请提出来让用户确认是否采纳。当且仅当输出的内容可能超出你单条消息输出长度限制时，请提前在最后一行加上 [to be continued]，等待用户的继续指令后继续输出。如果需要用户补充任何信息或确认，则不要加上 [to be continued]。';
 const CODE_BLOCK='Code block usage: Only source code and command line content should be wrapped in ``` code blocks';
+const CODE_REQUIREMENTS=`
+---
+
+### 🧱 Code Requirements
+
+- **Complete files only** - no truncation, placeholders, or partial code
+- **Language specification required** - \`\`\`js, \`\`\`python, \`\`\`bash, etc.
+- **Final versions only** - consider all interdependencies in each file
+- **All imports/functions included** - fully functional code
+- **Path format**: Use relative path from the project root shown in the provided structure
+  - Example: \`src/conversation_manager/manager.py\` → \`conversation_manager/manager.py\`
+  - Example: \`my_project/conversation_manager/manager.py\` → \`conversation_manager/manager.py\`
+
+---
+`;
 export const ROLE_CONFIGS: Record<string, {
   prompt: string;
   model: string;
@@ -132,7 +147,7 @@ Execute these phases sequentially. Proceed to the next phase ONLY after user con
    - ONLY output the content of the Coding Task,  nothing else
    - Starting with "\# Coding Task Document" 
 
- `+ CODE_BLOCK,
+ `,
     "model": "Claude-Sonnet-4-Reasoning",
     "desc": "Phase 1: Architecture Analysis & Design；Phase 2: Modular Decomposition & File Planning；Final output: Coding Task Prompt.",
   },
@@ -155,7 +170,7 @@ Specify the file relative path (except for shell commands), e.g.: FormulaCompute
 Provide the complete bash command or the complete code of the relevant file, For the detailed code in each file, DO NOT omit any code. It is absolutely unacceptable to only provide a segment of example code and then add comments such as "the rest can be implemented following the above pattern.".
 A code file should not exceed 150 lines, or it should be refactored into multiple files.
 
-`+ CODE_BLOCK,
+`+ CODE_BLOCK+ CODE_REQUIREMENTS,
     "model": "GPT-4.1",
     "desc": "请提供详细设计文档及开发任务。目标是输出可部署的详细代码文件。",
   },
@@ -191,19 +206,9 @@ File Path: [relative/path/from/project/root] (omit if shell command, use path re
 
 **Step Separator:** ------
 
----
-
-### 🧱 Code Requirements
-
-- **Complete files only** - no truncation, placeholders, or partial code
-- **Language specification required** - \`\`\`js, \`\`\`python, \`\`\`bash, etc.
-- **Final versions only** - consider all interdependencies in each file
-- **All imports/functions included** - fully functional code
-- **Path format**: Use relative path from the project root shown in the provided structure
-  - Example: \`src/conversation_manager/manager.py\` → \`conversation_manager/manager.py\`
-  - Example: \`my_project/conversation_manager/manager.py\` → \`conversation_manager/manager.py\`
-
----
+`
++ CODE_REQUIREMENTS +
+`
 
 ### 🚫 Prohibited
 
@@ -286,7 +291,7 @@ Specify the Action, which must be one of: execute shell command, create or delet
 Specify the file relative path (except for shell commands), e.g.: FormulaComputer/backend/src/main.py 
 Provide the complete code of the relevant file, for the detailed code in each file, DO NOT omit any code. It is absolutely unacceptable to only provide a segment of example code and then add comments such as "the rest can be implemented following the above pattern.". 
 A code file should not exceed 200 lines, or it should be refactored into multiple files.
-`,
+`+ CODE_BLOCK+ CODE_REQUIREMENTS,
     "model": "GPT-4.1",
     "desc": "请提供详细的二次开发任务或需求描述。目标是输出需要更新的代码文件。",
   },
