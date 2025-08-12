@@ -1,61 +1,59 @@
-import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
+import React, { useRef, useState, useLayoutEffect } from 'react';
 import { CodeBlockDimensions } from './types';
 interface CodeContentProps {
   code: string;
   language: string;
   lineNumbers: number[];
   isComplete: boolean;
-  isExpanded?: boolean; // 新增：是否展开状态
+  isExpanded?: boolean;
   onDimensionsChange: (dimensions: CodeBlockDimensions) => void;
 }
 const MAX_HEIGHT = 300;
+const EXPANDED_MAX_HEIGHT = 600; // 展开状态下的最大高度
 const CodeContent: React.FC<CodeContentProps> = ({
   code,
   language,
   lineNumbers,
   isComplete,
-  isExpanded = false, // 新增：默认不展开
+  isExpanded = false,
   onDimensionsChange
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [isOverflow, setIsOverflow] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   useLayoutEffect(() => {
-    const checkOverflow = () => {
-      if (contentRef.current) {
-        const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = `
-          position: absolute;
-          visibility: hidden;
-          pointer-events: none;
-          top: -9999px;
-          left: -9999px;
-          width: ${contentRef.current.offsetWidth}px;
-          font-family: monospace;
-          font-size: 14px;
-          line-height: 1.5;
-          white-space: pre-wrap;
-          word-break: break-word;
-          padding: 12px;
-        `;
-        const lineNumberWidth = 60;
-        tempDiv.style.width = `${contentRef.current.offsetWidth - lineNumberWidth}px`;
-        tempDiv.textContent = code;
-        document.body.appendChild(tempDiv);
-        const contentHeight = tempDiv.scrollHeight + 24;
-        const isContentOverflow = contentHeight > MAX_HEIGHT;
-        document.body.removeChild(tempDiv);
-        setIsOverflow(isContentOverflow);
-        setIsInitialized(true);
-        onDimensionsChange({
-          isOverflow: isContentOverflow,
-          contentHeight,
-          maxHeight: MAX_HEIGHT,
-          isExpanded
-        });
-      }
-    };
-    checkOverflow();
+    if (contentRef.current) {
+      const tempDiv = document.createElement('div');
+      tempDiv.style.cssText = `
+        position: absolute;
+        visibility: hidden;
+        pointer-events: none;
+        top: -9999px;
+        left: -9999px;
+        width: ${contentRef.current.offsetWidth}px;
+        font-family: monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        padding: 12px;
+      `;
+      const lineNumberWidth = 60;
+      tempDiv.style.width = `${contentRef.current.offsetWidth - lineNumberWidth}px`;
+      tempDiv.textContent = code;
+      document.body.appendChild(tempDiv);
+      const contentHeight = tempDiv.scrollHeight + 24;
+      const isContentOverflow = contentHeight > MAX_HEIGHT;
+      document.body.removeChild(tempDiv);
+      setIsOverflow(isContentOverflow);
+      setIsInitialized(true);
+      onDimensionsChange({
+        isOverflow: isContentOverflow,
+        contentHeight,
+        maxHeight: MAX_HEIGHT,
+        isExpanded
+      });
+    }
   }, [code, isExpanded, onDimensionsChange]);
   if (!isInitialized) {
     return (
@@ -79,18 +77,18 @@ const CodeContent: React.FC<CodeContentProps> = ({
       </div>
     );
   }
-  // 如果内容溢出且未展开，则隐藏内容
   if (isOverflow && !isExpanded) {
     return null;
   }
-  // 确定最大高度：如果展开则不限制高度，否则使用默认最大高度
-  const effectiveMaxHeight = isExpanded ? 'none' : MAX_HEIGHT;
+  const effectiveMaxHeight = isExpanded
+    ? EXPANDED_MAX_HEIGHT
+    : MAX_HEIGHT;
   return (
     <div
       ref={contentRef}
       style={{
         maxHeight: effectiveMaxHeight,
-        overflow: isExpanded ? 'auto' : 'auto',
+        overflowY: 'auto',
         display: 'flex',
         fontSize: 14,
         lineHeight: 1.5,
