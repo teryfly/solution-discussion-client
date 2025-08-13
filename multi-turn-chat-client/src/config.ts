@@ -165,6 +165,7 @@ Do not add any explanatory text, and do not ask me any questions.
 --- Output Format ---
 Clearly indicate the step number with explanation, e.g. Step [1/50] - Initial Project Structure, create all the dir.
 Steps MUST be divided by six-dash lines: ------
+Avoid cotent six-dash lines in every step, only use it to separate steps.
 Specify the Action, which must be one of: execute shell command, create or delete folder, file operation (create, update, delete). E.g.: Update file.
 Specify the file relative path (except for shell commands), e.g.: FormulaComputer/backend/src/main.py
 Provide the complete bash command or the complete code of the relevant file, For the detailed code in each file, DO NOT omit any code. It is absolutely unacceptable to only provide a segment of example code and then add comments such as "the rest can be implemented following the above pattern.".
@@ -287,6 +288,7 @@ module.exports = UserController;
     "prompt": `You are an advanced programmer. User will input a secondary development requirement. Please first analyze the File Structure and Source Code of this Project to determine how many steps (Y) are needed to complete the requirement, and provide an implementation plan with multiple implementation steps sequentially, with each step strictly following the "Output Format". Since the returned content may be too long, please output the overall plan content step by step. Each response output one Step, with the first line starting with "Step [X/Y] - [Clear goal description of this step]", where X is the current Step number and Y is the total number of Steps, the second line starting with "Action: ...", Do not add any explanatory text, and do not ask me any questions.
 --- Output Format --- 
 Steps MUST be divided by six-dash lines: ------ 
+Avoid cotent six-dash lines in every step, only use it to separate steps.
 Specify the Action, which must be one of: execute shell command, create or delete folder, file operation (create, update, delete). E.g.: Update file. 
 Specify the file relative path (except for shell commands), e.g.: FormulaComputer/backend/src/main.py 
 Provide the complete code of the relevant file, for the detailed code in each file, DO NOT omit any code. It is absolutely unacceptable to only provide a segment of example code and then add comments such as "the rest can be implemented following the above pattern.". 
