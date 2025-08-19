@@ -8,10 +8,67 @@ export const BASE_URL = 'http://localhost:8000/v1';
 
 /** ✅ 测试 API 密钥（如无需校验可留空） */
 export const API_KEY = 'sk-test';
+/** ✅ 写入源码API配置 */
+export const WRITE_SOURCE_CODE_CONFIG = {
+  log_level: 'ERROR', // 日志级别
+  backup_enabled: false,
+};
 
 /** ✅ 角色预置配置：包含 System Prompt、默认模型和角色说明 */
 const USER_FEADBAK= '如果有不明确、不清楚或不合理的地方就要求用户在下一轮对话中进一步解释、明确或更正。如果你有更好的建议或意见也请提出来让用户确认是否采纳。当且仅当输出的内容可能超出你单条消息输出长度限制时，请提前在最后一行加上 [to be continued]，等待用户的继续指令后继续输出。如果需要用户补充任何信息或确认，则不要加上 [to be continued]。';
 const CODE_BLOCK='Code block usage: Only source code and command line content should be wrapped in ``` code blocks';
+const CODE_EXAMPLE = `
+---
+
+### 📋 Example
+
+**Scenario**: Add auth to userController.js and authService.js
+
+Step [1/2] - Create final authentication service
+Action: Update file
+File Path: services/authService.js
+
+\`\`\`js
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+class AuthService {
+  async login(email, password) {
+    // Complete implementation
+  }
+  async register(userData) {
+    // Complete implementation  
+  }
+  verifyToken(token) {
+    // Complete implementation
+  }
+}
+module.exports = AuthService;
+\`\`\`
+
+------
+
+Step [2/2] - Update controller with final auth integration
+Action: Update file  
+File Path: controllers/userController.js
+
+\`\`\`js
+const AuthService = require('../services/authService');
+
+class UserController {
+  constructor() {
+    this.authService = new AuthService();
+  }
+  async login(req, res) {
+    // Complete implementation using authService
+  }
+  async register(req, res) {
+    // Complete implementation using authService
+  }
+}
+module.exports = UserController;
+\`\`\`
+`;
 const CODE_REQUIREMENTS=`
 ---
 
@@ -171,11 +228,11 @@ Specify the file relative path (except for shell commands), e.g.: FormulaCompute
 Provide the complete bash command or the complete code of the relevant file, For the detailed code in each file, DO NOT omit any code. It is absolutely unacceptable to only provide a segment of example code and then add comments such as "the rest can be implemented following the above pattern.".
 A code file should not exceed 150 lines, or it should be refactored into multiple files.
 
-`+ CODE_BLOCK+ CODE_REQUIREMENTS,
+`+ CODE_BLOCK+ CODE_REQUIREMENTS+CODE_EXAMPLE,
     "model": "GPT-4.1",
     "desc": "请提供详细设计文档及开发任务。目标是输出可部署的详细代码文件。",
   },
-   "敏捷开发工程师": {"prompt": `You are an advanced programmer specializing in secondary development. When given a requirement:
+   "敏捷开发工程师": {"prompt": `You are an advanced programmer. When given a requirement:
 
 **If any requirement details are unclear, ask questions first. Otherwise, provide complete code following the strict output format below with NO explanations or summaries.**
 
@@ -219,58 +276,7 @@ File Path: [relative/path/from/project/root] (omit if shell command, use path re
 - No explanations outside steps
 - No placeholders or partial code
 - No questions after starting implementation
-
----
-
-### 📋 Example
-
-**Scenario**: Add auth to userController.js and authService.js
-
-Step [1/2] - Create final authentication service
-Action: Update file
-File Path: services/authService.js
-
-\`\`\`js
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-
-class AuthService {
-  async login(email, password) {
-    // Complete implementation
-  }
-  async register(userData) {
-    // Complete implementation  
-  }
-  verifyToken(token) {
-    // Complete implementation
-  }
-}
-module.exports = AuthService;
-\`\`\`
-
-------
-
-Step [2/2] - Update controller with final auth integration
-Action: Update file  
-File Path: controllers/userController.js
-
-\`\`\`js
-const AuthService = require('../services/authService');
-
-class UserController {
-  constructor() {
-    this.authService = new AuthService();
-  }
-  async login(req, res) {
-    // Complete implementation using authService
-  }
-  async register(req, res) {
-    // Complete implementation using authService
-  }
-}
-module.exports = UserController;
-\`\`\`
-`,
+` + CODE_EXAMPLE,
     "model": "GPT-5",
     "desc": "请提供详细的二次开发任务或需求描述。目标是输出需要更新的代码文件。",
   },
@@ -293,7 +299,7 @@ Specify the Action, which must be one of: execute shell command, create or delet
 Specify the file relative path (except for shell commands), e.g.: FormulaComputer/backend/src/main.py 
 Provide the complete code of the relevant file, for the detailed code in each file, DO NOT omit any code. It is absolutely unacceptable to only provide a segment of example code and then add comments such as "the rest can be implemented following the above pattern.". 
 A code file should not exceed 200 lines, or it should be refactored into multiple files.
-`+ CODE_BLOCK+ CODE_REQUIREMENTS,
+`+ CODE_BLOCK+ CODE_REQUIREMENTS+ CODE_EXAMPLE,
     "model": "GPT-4.1",
     "desc": "请提供详细的二次开发任务或需求描述。目标是输出需要更新的代码文件。",
   },

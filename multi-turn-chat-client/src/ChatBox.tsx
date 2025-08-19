@@ -3,6 +3,7 @@ import { Message } from './types';
 import './App.css';
 import ContextMenu, { MenuItem } from './ContextMenu';
 import usePlanCategories from './hooks/usePlanCategories';
+import WriteSourceCodeModal from './components/WriteSourceCodeModal';
 import { COLLAPSE_LENGTH, ROLE_CONFIGS } from './config';
 import ResendConfirmModal from './components/ResendConfirmModal';
 import {
@@ -65,6 +66,15 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     targetIdx: null,
   });
   const [resendLoading, setResendLoading] = useState(false);
+  const [writeSourceModal, setWriteSourceModal] = useState<{
+    visible: boolean;
+    rootDir: string;
+    filesContent: string;
+  }>({
+    visible: false,
+    rootDir: '',
+    filesContent: '',
+  });
   const plan = usePlanCategories();
   const bubbleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   // 删除单条消息
@@ -181,6 +191,31 @@ const ChatBox: React.FC<ChatBoxProps> = ({
       alert('发送失败: ' + (e?.message || e));
     }
   };
+  // 写入项目源码
+  const handleWriteSourceCode = async (content: string) => {
+    if (!conversationMeta?.projectId) {
+      alert('会话未关联项目，无法写入源码');
+      return;
+    }
+    try {
+      // 获取项目详情，获取AI工作目录
+      const { getProjectDetail } = await import('./api');
+      const project = await getProjectDetail(conversationMeta.projectId);
+      const aiWorkDir = project.ai_work_dir || project.aiWorkDir;
+      if (!aiWorkDir) {
+        alert('项目未配置AI工作目录，无法写入源码');
+        return;
+      }
+      // 打开写入源码弹窗
+      setWriteSourceModal({
+        visible: true,
+        rootDir: aiWorkDir,
+        filesContent: content,
+      });
+    } catch (e: any) {
+      alert('获取项目信息失败: ' + (e?.message || e));
+    }
+  };
   const handleRightClick = (
     e: React.MouseEvent,
     groupIdx: number,
@@ -217,7 +252,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         label: `发送${charCount}字到...`,
         submenu: (plan.categories || []).map((cat) => ({
           label: cat.name,
-          onClick: () => handleSendTo(cat.id, cat.name, content),
+          onClick:() => handleSendTo(cat.id, cat.name, content),
         })),
       };
       const resendMenu: MenuItem = {
@@ -228,6 +263,10 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         label: '删除',
         onClick: () => handleDeleteSingle(idx),
       };
+      const writeSourceMenu: MenuItem = {
+        label: '写入项目源码',
+        onClick: () => handleWriteSourceCode(content),
+      };
       setContextMenu({
         x: e.clientX,
         y: e.clientY,
@@ -236,6 +275,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           { label: '复制', onClick: () => onCopy(content) },
           { label: '保存', onClick: () => onSave(content) },
           sendToMenu,
+          writeSourceMenu,
           dynamicAction,
           resendMenu,
           deleteMenu,
@@ -257,6 +297,10 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           onClick: () => handleSendTo(cat.id, cat.name, allContent),
         })),
       };
+      const writeSourceMenu: MenuItem = {
+        label: '写入项目源码',
+        onClick: () => handleWriteSourceCode(allContent),
+      };
       setContextMenu({
         x: e.clientX,
         y: e.clientY,
@@ -265,6 +309,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           { label: '复制', onClick: () => onCopy(allContent) },
           { label: '保存', onClick: () => onSave(allContent) },
           sendToMenu,
+          writeSourceMenu,
           deleteMenu,
         ],
       });
@@ -296,6 +341,12 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         loading={resendLoading}
         onConfirm={handleResendConfirm}
         onCancel={() => setResendModal({ visible: false, targetIdx: null })}
+      />
+      <WriteSourceCodeModal
+        visible={writeSourceModal.visible}
+        onClose={() => setWriteSourceModal({ visible: false, rootDir: '', filesContent: '' })}
+        rootDir={writeSourceModal.rootDir}
+        filesContent={writeSourceModal.filesContent}
       />
     </div>
   );

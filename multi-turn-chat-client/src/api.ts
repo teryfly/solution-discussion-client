@@ -1,5 +1,5 @@
 // api.ts
-import { BASE_URL, API_KEY } from './config';
+import { BASE_URL, API_KEY, WRITE_SOURCE_CODE_CONFIG } from './config';
 import type { Project } from './types';
 export async function createConversation(
   systemPrompt: string,
@@ -348,4 +348,60 @@ export async function getCompleteSourceCode(projectId: number): Promise<string> 
   }
   const data = await res.json();
   return data.completeSourceCode || '';
+}
+// 写入源码API
+export async function writeSourceCode(
+  rootDir: string,
+  filesContent: string,
+  onChunk: (data: { message: string; type: string; timestamp: string; data?: any }) => void,
+  onDone: () => void,
+  onError: (err: any) => void
+): Promise<void> {
+  try {
+    const res = await fetch(`${BASE_URL}/write-source-code`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify({
+        root_dir: rootDir,
+        files_content: filesContent,
+        log_level: WRITE_SOURCE_CODE_CONFIG.log_level,
+        backup_enabled: WRITE_SOURCE_CODE_CONFIG.backup_enabled,
+      }),
+    });
+    if (!res.body || !res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') {
+            onDone();
+            return;
+          }
+          try {
+            const data = JSON.parse(jsonStr);
+            onChunk(data);
+          } catch (err) {
+            console.warn('解析写入源码API响应错误:', err, jsonStr);
+          }
+        }
+      }
+    }
+    onDone();
+  } catch (err) {
+    onError(err);
+  }
 }
