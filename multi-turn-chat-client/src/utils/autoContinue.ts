@@ -39,7 +39,7 @@ export function shouldAutoContinue(text: string, rounds: number): { shouldContin
     if (info.hasIncomplete && !info.hasFinal) {
       return { 
         shouldContinue: true, 
-        continueMessage: 'Go on. If the code from any step in the previous round of dialogue was not output completely, then starting from the step where the code is incomplete, strictly follow the output format requirements to re-output that step and all subsequent steps.'
+        continueMessage: 'Proceed. If in any step from the previous round of dialogue, a code block delimited by triple backticks (```) was not properly closed, then starting from the step where the code block is incomplete, strictly follow the output format requirements to re-output that step and all subsequent steps.'
       };
     }
   }
