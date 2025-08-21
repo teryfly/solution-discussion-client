@@ -13,7 +13,14 @@ import {
 import ChatBubbleGroup, { groupMessages } from './components/ChatBubbleGroup';
 function getFullContent(msg: Message): string {
   if (typeof msg.content === 'string') {
-    return msg.content.replace(/<[^>]+>/g, '');
+    // 不要简单地移除所有HTML标签，而是要保留原始内容
+    // 只移除特定的等待动画标签
+    let content = msg.content;
+    // 移除等待动画标签
+    content = content.replace(/<span class="waiting-typing">.*?<\/span>/g, '');
+    // 移除其他可能的系统标签，但保留代码块等用户内容
+    content = content.replace(/<span[^>]*class="[^"]*system[^"]*"[^>]*>.*?<\/span>/g, '');
+    return content;
   }
   return String(msg.content);
 }
