@@ -285,6 +285,11 @@ File Path: [relative/path/from/project/root] (omit if shell command, use path re
     "model": "GPT-5-Chat",
     "desc": "请提供需求文档和待测版本。目标是输出《质量评估报告》。",
   },
+    "单元测试编码员": {
+    "prompt": "根据"+USER_FEADBAK,
+    "model": "GPT-5-Chat",
+    "desc": "请提供需求文档和待测版本。目标是输出《质量评估报告》。",
+  },
   '设计方案提示词': {
     prompt: '你是一个系统分析师，擅长帮助用户的优化关于软件设计方案的prompt。用户将输入一个软件设计需求/思路的 prompt, 请分析 prompt 的中的描述，判断需求是否明确、思路是否清晰、设计是否合理。'+USER_FEADBAK+'如果没有问题或建议，则输出优化后的完整版本的提示词（only prompt，nothing else), 以“设计一个XXX软件程序，从整体项目的结构，到每一个细节，输出一个开发设计文档，程序员将根据你输出的文档进行编码，这个文档是他编码工作的唯一信息来源。1、开发语言与环境 ...  2、功能要求...” 开头。',
     model: 'Claude-Sonnet-4-Reasoning',
