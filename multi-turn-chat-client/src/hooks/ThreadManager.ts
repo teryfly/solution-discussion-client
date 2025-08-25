@@ -2,6 +2,7 @@ import { Message } from '../types';
 import { sendMessageStream } from '../api';
 import { shouldAutoContinue } from '../utils/autoContinue';
 import { stopStreamApi } from '../utils/streamApi';
+
 export interface ThreadInfo {
   isActive: boolean;
   abortController: AbortController;
@@ -9,7 +10,9 @@ export interface ThreadInfo {
   setLoading: (loading: boolean) => void;
   sessionId?: string;
   stopStream: (() => Promise<void>) | null;
+  getDocumentIds?: () => number[]; // 新增：获取文档ID的函数
 }
+
 export interface ThreadController {
   send: (input: string, model: string) => Promise<void>;
   isActive: () => boolean;
@@ -17,18 +20,22 @@ export interface ThreadController {
   setSessionId: (id: string) => void;
   stopStream: () => Promise<void>;
 }
+
 export class ConversationThreadManager {
   private threads = new Map<string, ThreadInfo>();
+
   // 创建或获取线程
   createThread(
     conversationId: string, 
     appendMessage: (msg: Message, replaceLast?: boolean) => void,
-    setLoading: (loading: boolean) => void
+    setLoading: (loading: boolean) => void,
+    getDocumentIds?: () => number[] // 新增：获取文档ID的函数
   ): ThreadController {
     // 如果线程已存在，先停止它
     if (this.threads.has(conversationId)) {
       this.stopThread(conversationId);
     }
+
     const abortController = new AbortController();
     this.threads.set(conversationId, {
       isActive: true,
@@ -37,7 +44,9 @@ export class ConversationThreadManager {
       setLoading,
       sessionId: undefined,
       stopStream: null,
+      getDocumentIds,
     });
+
     return {
       send: this.createSender(conversationId),
       isActive: () => this.threads.get(conversationId)?.isActive || false,
@@ -54,6 +63,7 @@ export class ConversationThreadManager {
       },
     };
   }
+
   // 停止指定线程
   stopThread(conversationId: string) {
     const thread = this.threads.get(conversationId);
@@ -64,6 +74,7 @@ export class ConversationThreadManager {
       this.threads.delete(conversationId);
     }
   }
+
   // 设置线程为活跃状态（当前显示的会话）
   setActiveThread(conversationId: string) {
     // 将所有线程设为非活跃
@@ -76,44 +87,57 @@ export class ConversationThreadManager {
       thread.isActive = true;
     }
   }
+
   // 检查线程是否活跃
   isThreadActive(conversationId: string): boolean {
     return this.threads.get(conversationId)?.isActive || false;
   }
+
   // 创建发送器
   private createSender(conversationId: string) {
     return async (input: string, model: string) => {
       const thread = this.threads.get(conversationId);
       if (!thread) return;
+
       if (!input.trim()) return;
       thread.setLoading(true);
+
       let rounds = 0;
       let userMessageId: number | undefined;
       let assistantMessageId: number | undefined;
       let sessionId: string | undefined;
+
       // 内部递归: assistant流式回复
       const sendOne = async (prompt: string) => {
         const currentThread = this.threads.get(conversationId);
         if (!currentThread || currentThread.abortController.signal.aborted) {
           return;
         }
+
         let streamedReply = '';
         let isFirstChunk = true;
+
+        // 获取文档ID
+        const documentIds = currentThread.getDocumentIds ? currentThread.getDocumentIds() : [];
+
         // 只有活跃线程才显示用户消息和等待动画
         if (currentThread.isActive) {
           currentThread.appendMessage({ role: 'user', content: prompt, collapsed: false });
           currentThread.appendMessage(
-            { role: 'assistant', content: '<span class="waiting-typing">正在思考……</span>', collapsed: false }
+            { role: 'assistant', content: '', collapsed: false }
           );
         }
+
         try {
           await sendMessageStream(
             conversationId,
             prompt,
             model,
+            documentIds, // 传递文档ID
             (chunk, metadata) => {
               const thread = this.threads.get(conversationId);
               if (!thread || thread.abortController.signal.aborted) return;
+
               // 第一个chunk时处理消息ID
               if (isFirstChunk && metadata) {
                 isFirstChunk = false;
@@ -135,6 +159,7 @@ export class ConversationThreadManager {
                   );
                 }
               }
+
               // 处理内容chunk
               if (chunk) {
                 streamedReply += chunk;
@@ -155,6 +180,7 @@ export class ConversationThreadManager {
             async () => {
               const thread = this.threads.get(conversationId);
               if (!thread || thread.abortController.signal.aborted) return;
+
               const { shouldContinue, continueMessage } = shouldAutoContinue(streamedReply, rounds);
               if (shouldContinue) {
                 rounds++;
@@ -210,9 +236,11 @@ export class ConversationThreadManager {
           thread.setLoading(false);
         }
       };
+
       await sendOne(input);
     };
   }
+
   // 清理所有线程
   cleanup() {
     this.threads.forEach((thread, conversationId) => {

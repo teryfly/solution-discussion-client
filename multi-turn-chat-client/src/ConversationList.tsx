@@ -11,6 +11,7 @@ import {
   deleteConversation,
   deleteProject,
 } from './api';
+
 interface Props {
   projects: Project[];
   selectedProjectId: number;
@@ -25,6 +26,7 @@ interface Props {
   modelOptions: string[];
   onProjectUpdate?: () => void; // 项目更新后的回调
 }
+
 const ConversationList: React.FC<Props> = ({
   projects,
   selectedProjectId,
@@ -45,27 +47,29 @@ const ConversationList: React.FC<Props> = ({
   const [showProjectManagement, setShowProjectManagement] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<number | undefined>();
   const location = useLocation();
+
   const handleContextMenu = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, id });
   };
+
   const handleProjectContextMenu = (e: React.MouseEvent, projectId: number) => {
     e.preventDefault();
     e.stopPropagation();
     setProjectContextMenu({ x: e.clientX, y: e.clientY, projectId });
   };
+
   const handleProjectEdit = (projectId: number) => {
     setEditingProjectId(projectId);
     setShowProjectManagement(true);
     setProjectContextMenu(null);
   };
+
   const handleProjectDelete = async (projectId: number) => {
     const project = projects.find(p => p.id === projectId);
-    // const projectName = project?.name || '未知项目';
     if (window.confirm(`确定要删除项目「${project?.name || '未知项目'}」吗？此操作不可恢复！`)) {
       try {
         await deleteProject(projectId);
-        // alert('项目删除成功！');
         onProjectUpdate?.();
       } catch (err) {
         // alert('删除项目失败: ' + (err?.message || err));
@@ -73,14 +77,17 @@ const ConversationList: React.FC<Props> = ({
     }
     setProjectContextMenu(null);
   };
+
   const handleNewProject = () => {
     setEditingProjectId(undefined);
     setShowProjectManagement(true);
   };
+
   const handleProjectManagementSuccess = () => {
     onProjectUpdate?.();
     setShowProjectManagement(false);
   };
+
   const renderContextMenu = () => {
     if (!contextMenu) return null;
     const id = contextMenu.id;
@@ -127,6 +134,7 @@ const ConversationList: React.FC<Props> = ({
       />
     );
   };
+
   const renderProjectContextMenu = () => {
     if (!projectContextMenu) return null;
     return (
@@ -147,25 +155,36 @@ const ConversationList: React.FC<Props> = ({
       />
     );
   };
+
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const defaultProjectName = selectedProject?.name || '其它';
+
   // 将"其它"项目移到最后
   const sortedProjects = [...projects].sort((a, b) => {
     if (a.id === 0) return 1; // "其它"排到最后
     if (b.id === 0) return -1;
     return 0; // 保持其他项目的原有顺序
   });
+
   return (
-    <div className="conversation-list" style={{ display: 'flex' }}>
-      {/* 左列：项目列表（来自 /v1/projects） */}
-      <div style={{ width: '120px', borderRight: '1px solid #ccc' }}>
+    <div style={{ display: 'flex', height: '100vh' }}>
+      {/* 左列：项目列表 */}
+      <div style={{ 
+        width: '120px', 
+        borderRight: '1px solid #ccc',
+        background: '#f7faff',
+        height: '100vh',
+        overflow: 'auto',
+        padding: '10px 8px',
+        boxSizing: 'border-box'
+      }}>
         <button
           onClick={handleNewProject}
           style={{ 
             marginBottom: 12, 
             width: '100%',
-            fontSize: '12px',
-            padding: '6px 8px'
+            fontSize: '11px',
+            padding: '6px 4px'
           }}
         >
           新建项目
@@ -176,25 +195,39 @@ const ConversationList: React.FC<Props> = ({
             onClick={() => onProjectSelect(project.id)}
             onContextMenu={(e) => project.id !== 0 ? handleProjectContextMenu(e, project.id) : undefined}
             style={{
-              padding: '8px 10px',
+              padding: '8px 6px',
               cursor: 'pointer',
               background: selectedProjectId === project.id ? '#d0e4ff' : undefined,
-              position: 'relative',
+              borderRadius: '4px',
+              marginBottom: '4px',
+              fontSize: '12px',
+              wordBreak: 'break-word',
+              lineHeight: '1.3'
             }}
+            title={project.name}
           >
-            {project.name}
+            {project.name.length > 10 ? project.name.slice(0, 10) + '...' : project.name}
           </div>
         ))}
       </div>
-      {/* 右列：当前项目下的会话（status==0） */}
-      <div style={{ flex: 1, paddingLeft: 10 }}>
+
+      {/* 右列：当前项目下的会话 */}
+      <div style={{ 
+        width: '200px', 
+        borderRight: '1px solid #ccc',
+        background: '#f9f9fc',
+        height: '100vh',
+        overflow: 'auto',
+        padding: '10px',
+        boxSizing: 'border-box'
+      }}>
         <button
           onClick={() => setShowNewModal(true)}
           style={{ 
             marginBottom: 12, 
             width: '100%',
-            fontSize: '14px',
-            padding: '8px 12px'
+            fontSize: '13px',
+            padding: '8px 10px'
           }}
         >
           新建会话
@@ -215,17 +248,27 @@ const ConversationList: React.FC<Props> = ({
                 cursor: 'pointer',
               }}
             >
-              <div style={{ fontWeight: 500 }}>{conv.name || '未命名会话'}</div>
-              <div style={{ fontSize: 12, color: '#444' }}>
-                {conv.assistanceRole || '（无角色）'}
+              <div style={{ fontWeight: 500, fontSize: '13px', lineHeight: '1.3' }}>
+                {(conv.name || '未命名会话').length > 20 
+                  ? (conv.name || '未命名会话').slice(0, 20) + '...'
+                  : (conv.name || '未命名会话')
+                }
               </div>
-              <div style={{ fontSize: 12, color: '#666' }}>{conv.model}</div>
+              <div style={{ fontSize: 11, color: '#444', marginTop: '2px' }}>
+                {(conv.assistanceRole || '（无角色）').length > 15
+                  ? (conv.assistanceRole || '（无角色）').slice(0, 15) + '...'
+                  : (conv.assistanceRole || '（无角色）')
+                }
+              </div>
+              <div style={{ fontSize: 11, color: '#666', marginTop: '2px' }}>{conv.model}</div>
             </li>
           ))}
         </ul>
       </div>
+
       {renderContextMenu()}
       {renderProjectContextMenu()}
+      
       <NewConversationModal
         visible={showNewModal}
         onClose={() => setShowNewModal(false)}
@@ -235,6 +278,7 @@ const ConversationList: React.FC<Props> = ({
         modelOptions={modelOptions}
         defaultProjectName={defaultProjectName}
       />
+      
       <ProjectManagement
         visible={showProjectManagement}
         onClose={() => setShowProjectManagement(false)}
@@ -244,4 +288,5 @@ const ConversationList: React.FC<Props> = ({
     </div>
   );
 };
+
 export default ConversationList;

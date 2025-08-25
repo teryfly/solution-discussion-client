@@ -3,8 +3,10 @@ import ConversationList from './ConversationList';
 import ConversationHeader from './components/ConversationHeader';
 import ChatArea from './components/ChatArea';
 import InputArea from './components/InputArea';
+import KnowledgePanel from './components/KnowledgePanel';
 import { useConversationLayout } from './hooks/useConversationLayout';
 import { ProjectProvider } from './context/ProjectContext';
+
 function ConversationLayout() {
   const {
     // 状态
@@ -39,10 +41,13 @@ function ConversationLayout() {
     setMessages,
     refreshProjects, // 新增：项目刷新方法
   } = useConversationLayout();
+
   const currentProjectId = currentMeta?.projectId ?? selectedProjectId;
+
   return (
     <ProjectProvider projects={projects as any} currentProjectId={currentProjectId}>
       <div style={{ display: 'flex', flex: 1, height: '100vh', minHeight: 0 }}>
+        {/* 项目列表 */}
         <ConversationList
           projects={projects}
           selectedProjectId={selectedProjectId}
@@ -57,6 +62,8 @@ function ConversationLayout() {
           modelOptions={modelOptions}
           onProjectUpdate={refreshProjects} // 传递项目更新回调
         />
+
+        {/* 聊天区域 */}
         <div className="chat-container" style={{
           flex: 1,
           display: 'flex',
@@ -93,8 +100,15 @@ function ConversationLayout() {
             onStop={handleStopClick}
           />
         </div>
+
+        {/* 知识库面板 - 移到最右边 */}
+        <KnowledgePanel
+          conversationId={conversationId}
+          currentMeta={currentMeta}
+        />
       </div>
     </ProjectProvider>
   );
 }
+
 export default ConversationLayout;

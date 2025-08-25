@@ -1,16 +1,16 @@
 .chat-controls {
   display: flex;
-  gap: 10px;
+  gap: 8px; /* 从10px减少到8px */
   margin-top: auto;
 }
 
 .chat-controls button {
-  line-height: 3.9;
-  height: 3.9em;
-  padding: 0 20px;
+  line-height: 3.5; /* 从3.9减少到3.5 */
+  height: 3.5em;
+  padding: 0 16px; /* 从20px减少到16px */
   background-color: #1a73e8;
   color: white;
-  font-size: 16px;
+  font-size: 15px; /* 从16px减少到15px */
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -18,10 +18,10 @@
 }
 
 button {
-  padding: 0 20px;
+  padding: 0 16px; /* 从20px减少到16px */
   background-color: #1a73e8;
   color: white;
-  font-size: 16px;
+  font-size: 15px; /* 从16px减少到15px */
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -38,10 +38,11 @@ button:disabled {
 }
 
 .chat-toolbar {
-  margin-bottom: 10px;
+  margin-bottom: 8px; /* 从10px减少到8px */
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px; /* 从10px减少到8px */
+  font-size: 14px; /* 添加字体大小控制 */
 }
 
 .chat-toolbar label {
@@ -50,11 +51,11 @@ button:disabled {
 
 .scroll-arrow {
   position: absolute;
-  right: 10px;
+  right: 8px; /* 从10px减少到8px */
   z-index: 10;
-  font-size: 20px;
+  font-size: 18px; /* 从20px减少到18px */
   background-color: rgba(255, 255, 255, 0.8);
-  padding: 4px 8px;
+  padding: 3px 6px; /* 从4px 8px减少到3px 6px */
   border-radius: 50%;
   cursor: pointer;
   transition: opacity 0.3s;
@@ -62,9 +63,25 @@ button:disabled {
 }
 
 .scroll-arrow.top {
-  top: 8px;
+  top: 6px; /* 从8px减少到6px */
 }
 
 .scroll-arrow.bottom {
-  bottom: 8px;
+  bottom: 6px; /* 从8px减少到6px */
+}
+
+/* 输入区域样式调整 */
+.chat-controls textarea {
+  flex: 1;
+  min-height: 50px; /* 从60px减少到50px */
+  max-height: 250px; /* 从300px减少到250px */
+  padding: 8px; /* 从10px减少到8px */
+  font-size: 15px; /* 从16px减少到15px */
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+  overflow-y: auto;
+  height: auto;
+  line-height: 1.5;
+  transition: height 0.2s ease;
 }

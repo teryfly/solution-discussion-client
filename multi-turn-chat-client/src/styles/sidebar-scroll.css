@@ -1,4 +1,4 @@
-/* 左侧项目分类和会话列表支持滚动 */
+/* 四列布局的滚动支持 */
 .conversation-list {
   display: flex;
   flex-direction: row;
@@ -6,8 +6,10 @@
   max-height: 100vh;
   min-height: 0;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
+/* 项目列样式 */
 .conversation-list > div:first-child {
   width: 120px;
   border-right: 1px solid #ccc;
@@ -16,25 +18,67 @@
   min-height: 0;
   background: #f7faff;
   flex-shrink: 0;
-  padding-bottom: 40px;
+  padding: 10px 8px;
+  box-sizing: border-box;
 }
 
+/* 会话列样式 */
 .conversation-list > div:nth-child(2) {
-  flex: 1;
-  min-width: 0;
+  width: 200px; /* 从flex: 1调整为固定宽度200px */
+  min-width: 200px;
   overflow-y: auto;
   height: 100vh;
-  padding-left: 10px;
+  padding: 10px;
   background: #f9f9fc;
-  padding-bottom: 40px;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
-/* 优化滚动条样式（可选） */
-.conversation-list > div::-webkit-scrollbar {
-  width: 8px;
+/* 知识库面板样式 */
+.knowledge-panel {
+  width: 120px;
+  border-right: 1px solid #ccc;
+  background: #f9f9fc;
+  height: 100vh;
+  overflow-y: auto;
+  min-height: 0;
+  flex-shrink: 0;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+/* 聊天区域样式 */
+.chat-column {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* 优化滚动条样式 */
+.conversation-list > div::-webkit-scrollbar,
+.knowledge-panel::-webkit-scrollbar {
+  width: 6px; /* 从8px减少到6px */
   background: #f3f3f8;
 }
-.conversation-list > div::-webkit-scrollbar-thumb {
+
+.conversation-list > div::-webkit-scrollbar-thumb,
+.knowledge-panel::-webkit-scrollbar-thumb {
   background: #dbe7f7;
-  border-radius: 4px;
+  border-radius: 3px; /* 从4px减少到3px */
+}
+
+.conversation-list > div::-webkit-scrollbar-thumb:hover,
+.knowledge-panel::-webkit-scrollbar-thumb:hover {
+  background: #c5d6f0;
+}
+
+/* 确保四列布局的容器样式 */
+.four-column-container {
+  display: flex;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }

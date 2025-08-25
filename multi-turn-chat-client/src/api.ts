@@ -1,6 +1,7 @@
 // api.ts
 import { BASE_URL, API_KEY, WRITE_SOURCE_CODE_CONFIG } from './config';
 import type { Project } from './types';
+
 export async function createConversation(
   systemPrompt: string,
   projectId: number,
@@ -30,6 +31,7 @@ export async function createConversation(
   const data = await res.json();
   return data.conversation_id;
 }
+
 export async function deleteConversation(id: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'DELETE',
@@ -40,6 +42,7 @@ export async function deleteConversation(id: string): Promise<void> {
     throw new Error(err?.message || `删除会话失败: ${res.status}`);
   }
 }
+
 export async function updateConversationProject(id: string, projectId: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
@@ -54,6 +57,7 @@ export async function updateConversationProject(id: string, projectId: number): 
     throw new Error(err?.message || `更新会话项目失败: ${res.status}`);
   }
 }
+
 export async function getGroupedConversations(): Promise<any> {
   const res = await fetch(`${BASE_URL}/chat/conversations/grouped`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -64,6 +68,7 @@ export async function getGroupedConversations(): Promise<any> {
   }
   return await res.json();
 }
+
 export async function getProjects(): Promise<Project[]> {
   const res = await fetch(`${BASE_URL}/projects`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -75,6 +80,7 @@ export async function getProjects(): Promise<Project[]> {
   const data = await res.json();
   return data || [];
 }
+
 export async function getProjectDetail(id: number): Promise<Project> {
   const res = await fetch(`${BASE_URL}/projects/${id}`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -85,6 +91,7 @@ export async function getProjectDetail(id: number): Promise<Project> {
   }
   return await res.json();
 }
+
 export async function createProject(projectData: {
   name: string;
   dev_environment: string;
@@ -114,6 +121,7 @@ export async function createProject(projectData: {
   }
   return await res.json();
 }
+
 export async function updateProject(id: number, projectData: Partial<{
   name: string;
   dev_environment: string;
@@ -137,6 +145,7 @@ export async function updateProject(id: number, projectData: Partial<{
   }
   return await res.json();
 }
+
 export async function deleteProject(id: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/projects/${id}`, {
     method: 'DELETE',
@@ -147,6 +156,7 @@ export async function deleteProject(id: number): Promise<void> {
     throw new Error(err?.message || `删除项目失败: ${res.status}`);
   }
 }
+
 export async function getConversations(params: { project_id?: number; status?: number } = {}): Promise<any[]> {
   const qs = new URLSearchParams();
   if (typeof params.project_id === 'number') qs.set('project_id', String(params.project_id));
@@ -161,6 +171,7 @@ export async function getConversations(params: { project_id?: number; status?: n
   }
   return await res.json();
 }
+
 export async function getMessages(
   conversationId: string
 ): Promise<Array<{ id?: number; role: string; content: string }>> {
@@ -174,27 +185,36 @@ export async function getMessages(
   const data = await res.json();
   return data.messages;
 }
+
 export async function sendMessageStream(
   conversationId: string,
   content: string,
   model: string,
+  documentIds: number[] = [], // 新增：文档ID数组
   onChunk: (text: string, metadata?: { user_message_id?: number; assistant_message_id?: number; conversation_id?: string; session_id?: string }) => void,
   onDone: () => void,
   onError: (err: any) => void
 ) {
   try {
+    const requestBody: any = {
+      role: 'user',
+      content,
+      model,
+      stream: true,
+    };
+
+    // 如果有文档引用，添加到请求体中
+    if (documentIds.length > 0) {
+      requestBody.documents = documentIds;
+    }
+
     const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${API_KEY}`,
       },
-      body: JSON.stringify({
-        role: 'user',
-        content,
-        model,
-        stream: true,
-      }),
+      body: JSON.stringify(requestBody),
     });
     if (!res.body || !res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     const reader = res.body.getReader();
@@ -238,6 +258,7 @@ export async function sendMessageStream(
     onError(err);
   }
 }
+
 export async function getModels(): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/models`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -249,6 +270,7 @@ export async function getModels(): Promise<string[]> {
   const data = await res.json();
   return data.data.map((m: any) => m.id);
 }
+
 export async function updateConversationName(id: string, newName: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
@@ -263,6 +285,7 @@ export async function updateConversationName(id: string, newName: string): Promi
     throw new Error(err?.message || `更新会话名称失败: ${res.status}`);
   }
 }
+
 export async function updateConversationModel(id: string, model: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${id}`, {
     method: 'PUT',
@@ -277,6 +300,7 @@ export async function updateConversationModel(id: string, model: string): Promis
     throw new Error(err?.message || `更新模型失败: ${res.status}`);
   }
 }
+
 // 计划分类API
 export async function getPlanCategories(): Promise<{ id: number; name: string }[]> {
   const cache = localStorage.getItem('plan_categories');
@@ -301,6 +325,7 @@ export async function getPlanCategories(): Promise<{ id: number; name: string }[
   localStorage.setItem('plan_categories', JSON.stringify(cleanData));
   return cleanData;
 }
+
 // 新建计划文档
 export async function createPlanDocument({
   project_id,
@@ -338,6 +363,7 @@ export async function createPlanDocument({
   }
   return await res.json();
 }
+
 export async function getCompleteSourceCode(projectId: number): Promise<string> {
   const res = await fetch(`${BASE_URL}/projects/${projectId}/complete-source-code`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -349,6 +375,7 @@ export async function getCompleteSourceCode(projectId: number): Promise<string> 
   const data = await res.json();
   return data.completeSourceCode || '';
 }
+
 // 写入源码API
 export async function writeSourceCode(
   rootDir: string,
@@ -403,5 +430,174 @@ export async function writeSourceCode(
     onDone();
   } catch (err) {
     onError(err);
+  }
+}
+
+// ==================== 知识库引用相关API ====================
+
+// 查询会话引用的文档
+export async function getConversationReferencedDocuments(conversationId: string): Promise<{
+  conversation_id: string;
+  project_references: any[];
+  conversation_references: any[];
+}> {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/referenced-documents`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取会话引用文档失败: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// 获取可引用的知识库文档列表
+export async function getKnowledgeDocuments(projectId: number): Promise<any[]> {
+  const res = await fetch(`${BASE_URL}/plan/documents/history?project_id=${projectId}&category_id=5`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取知识库文档失败: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// 查询项目级引用
+export async function getProjectDocumentReferences(projectId: number): Promise<any[]> {
+  const res = await fetch(`${BASE_URL}/projects/${projectId}/document-references`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取项目引用失败: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// 设置项目级引用
+export async function setProjectDocumentReferences(projectId: number, documentIds: number[]): Promise<any> {
+  const res = await fetch(`${BASE_URL}/projects/${projectId}/document-references`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({ document_ids: documentIds }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `设置项目引用失败: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// 清空项目级引用
+export async function clearProjectDocumentReferences(projectId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/projects/${projectId}/document-references`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `清空项目引用失败: ${res.status}`);
+  }
+}
+
+// 查询会话级引用
+export async function getConversationDocumentReferences(conversationId: string): Promise<any[]> {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/document-references`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取会话引用失败: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// 设置会话级引用
+export async function setConversationDocumentReferences(conversationId: string, documentIds: number[]): Promise<any> {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/document-references`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({ document_ids: documentIds }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `设置会话引用失败: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// 清空会话级引用
+export async function clearConversationDocumentReferences(conversationId: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/document-references`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `清空会话引用失败: ${res.status}`);
+  }
+}
+
+// 查看文档详情
+export async function getDocumentDetail(documentId: number): Promise<any> {
+  const res = await fetch(`${BASE_URL}/plan/documents/${documentId}`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `获取文档详情失败: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// 编辑文档内容
+export async function updateDocument(documentId: number, data: {
+  filename?: string;
+  content?: string;
+  source?: string;
+}): Promise<any> {
+  const res = await fetch(`${BASE_URL}/plan/documents/${documentId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `更新文档失败: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// 删除单个文档引用
+export async function removeProjectDocumentReference(projectId: number, documentId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/projects/${projectId}/document-references/${documentId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `删除项目引用失败: ${res.status}`);
+  }
+}
+
+// 删除单个会话级文档引用
+export async function removeConversationDocumentReference(conversationId: string, documentId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/document-references/${documentId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `删除会话引用失败: ${res.status}`);
   }
 }

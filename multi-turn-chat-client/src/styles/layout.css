@@ -10,11 +10,11 @@ h2 {
   color: #333;
 }
 
-/* 聊天容器布局 */
+/* 聊天容器布局 - 调整为适应四列结构 */
 .chat-container {
   flex: 1;
   margin: 0;
-  padding: 20px;
+  padding: 15px; /* 减少padding以节省空间 */
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
@@ -23,4 +23,43 @@ h2 {
   height: 100%;
   min-height: 100vh;
   box-sizing: border-box;
+}
+
+/* 四列布局容器 */
+.four-column-layout {
+  display: flex;
+  flex: 1;
+  height: 100vh;
+  min-height: 0;
+}
+
+/* 项目列样式 */
+.project-column {
+  width: 120px;
+  flex-shrink: 0;
+  border-right: 1px solid #ccc;
+  background: #f7faff;
+}
+
+/* 会话列样式 */
+.conversation-column {
+  width: 200px; /* 从250px减少到200px */
+  flex-shrink: 0;
+  border-right: 1px solid #ccc;
+  background: #f9f9fc;
+}
+
+/* 知识库列样式 */
+.knowledge-column {
+  width: 120px;
+  flex-shrink: 0;
+  border-right: 1px solid #ccc;
+  background: #f9f9fc;
+}
+
+/* 聊天列样式 */
+.chat-column {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
 }
