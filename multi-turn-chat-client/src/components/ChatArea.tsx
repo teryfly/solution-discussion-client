@@ -1,6 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ChatBox from '../ChatBox';
 import { Message, ConversationMeta } from '../types';
+
+interface LogEntry {
+  id: string;
+  message: string;
+  type: string;
+  timestamp: string;
+  data?: any;
+}
+
 interface ChatAreaProps {
   messages: Message[];
   currentMeta?: ConversationMeta;
@@ -14,7 +23,11 @@ interface ChatAreaProps {
   onScrollToTop: () => void;
   onScrollToBottom: () => void;
   conversationId: string;
+  executionLogs: LogEntry[];
+  onClearExecutionLogs: () => void;
+  onMessageComplete?: (content: string) => void;
 }
+
 const ChatArea: React.FC<ChatAreaProps> = ({
   messages,
   currentMeta,
@@ -28,10 +41,32 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   onScrollToTop,
   onScrollToBottom,
   conversationId,
+  executionLogs,
+  onClearExecutionLogs,
+  onMessageComplete,
 }) => {
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [hasScrolledToLastMessage, setHasScrolledToLastMessage] = useState(false);
+
+  // 监听消息变化，检测助手消息完成
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    // 检查是否是完成的助手消息（不包含等待动画）
+    if (
+      lastMessage &&
+      lastMessage.role === 'assistant' &&
+      typeof lastMessage.content === 'string' &&
+      !lastMessage.content.includes('<span class="waiting-typing">') &&
+      lastMessage.content.trim().length > 0
+    ) {
+      // 触发消息完成回调
+      onMessageComplete?.(lastMessage.content);
+    }
+  }, [messages, onMessageComplete]);
+
   // 自动滚动逻辑
   useEffect(() => {
     if (!chatBoxRef.current) return;
@@ -49,6 +84,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       });
     }
   }, [messages, isAutoScroll]);
+
   // 滚动监听
   useEffect(() => {
     const chatBox = chatBoxRef.current;
@@ -66,6 +102,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       chatBox.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
   // 页面加载完后自动滚动到最后一条消息首行并居中
   useEffect(() => {
     if (!chatBoxRef.current || messages.length === 0 || hasScrolledToLastMessage) return;
@@ -93,10 +130,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       setHasScrolledToLastMessage(true);
     }, 100);
   }, [messages, conversationId, hasScrolledToLastMessage]);
+
   // 会话切换时重置滚动状态
   useEffect(() => {
     setHasScrolledToLastMessage(false);
   }, [conversationId]);
+
   // 发送消息后自动滚动到底部
   useEffect(() => {
     if (!chatBoxRef.current) return;
@@ -110,12 +149,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       setIsAutoScroll(true);
     }
   }, [messages]);
+
   const handleScrollToTop = () => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
     onScrollToTop();
   };
+
   const handleScrollToBottom = () => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTo({
@@ -126,6 +167,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
     onScrollToBottom();
   };
+
   return (
     <div className="chat-box-wrapper" style={{
       position: 'relative',
@@ -168,4 +210,5 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     </div>
   );
 };
+
 export default ChatArea;

@@ -87,7 +87,7 @@ export function useConversationLayout() {
     conversationId,
     model,
     appendMessage,
-    getDocumentIds // 传递获取文档ID的函数
+    getDocumentIds
   );
 
   // 设置活跃会话
@@ -159,10 +159,10 @@ export function useConversationLayout() {
     scrollToBottom,
     scrollToTop,
     appendMessage,
-    handleRelayRole, // 保留并导出原有"转交角色"能力
+    handleRelayRole,
     handleStopClick,
     handleSendMessage,
     setMessages,
-    refreshProjects, // 新增：项目刷新方法
+    refreshProjects,
   };
 }

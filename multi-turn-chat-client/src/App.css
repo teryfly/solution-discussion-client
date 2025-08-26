@@ -57,14 +57,14 @@
   background-color: #f0f0f0;
 }
 
-/* 知识库面板样式 */
+/* 知识库面板样式 - 更新为支持分割布局 */
 .knowledge-panel {
   width: 120px;
   border-right: 1px solid #ccc;
   background: #f9f9fc;
   height: 100vh;
-  overflow: auto;
-  padding: 10px;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
 }
 
@@ -115,4 +115,128 @@
   color: #888;
   font-style: italic;
   padding: 4px 0;
+}
+
+/* 执行日志相关样式 */
+.execution-logs-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.execution-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.execution-logs-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+}
+
+.execution-logs-clear-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  cursor: pointer;
+  color: #666;
+}
+
+.execution-logs-clear-btn:hover {
+  background: #f5f5f5;
+}
+
+.execution-logs-container {
+  flex: 1;
+  overflow: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.execution-logs-empty {
+  color: #999;
+  text-align: center;
+  margin-top: 20px;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.execution-log-entry {
+  margin-bottom: 8px;
+  padding: 6px;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+.execution-log-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.execution-log-timestamp {
+  font-size: 9px;
+  color: #999;
+}
+
+.execution-log-type {
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.execution-log-type.error {
+  color: #f44336;
+}
+
+.execution-log-type.warning {
+  color: #ff9800;
+}
+
+.execution-log-type.summary {
+  color: #9c27b0;
+}
+
+.execution-log-content {
+  font-size: 10px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* 自动更新代码复选框样式 */
+.auto-update-code-checkbox {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 12px;
+  color: #666;
+}
+
+.auto-update-code-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-update-code-checkbox input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
 }

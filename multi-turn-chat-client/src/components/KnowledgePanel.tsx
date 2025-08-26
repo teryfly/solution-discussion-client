@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ConversationMeta, DocumentReference, KnowledgeDocument } from '../types';
 import { 
   getConversationReferencedDocuments, 
@@ -11,16 +11,28 @@ import ProjectReferenceModal from './ProjectReferenceModal';
 import ConversationReferenceModal from './ConversationReferenceModal';
 import DocumentDetailModal from './DocumentDetailModal';
 
+interface LogEntry {
+  id: string;
+  message: string;
+  type: string;
+  timestamp: string;
+  data?: any;
+}
+
 interface KnowledgePanelProps {
   conversationId: string;
   currentMeta?: ConversationMeta;
   onRefresh?: () => void;
+  executionLogs: LogEntry[];
+  onClearLogs?: () => void;
 }
 
 const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   conversationId,
   currentMeta,
   onRefresh,
+  executionLogs,
+  onClearLogs,
 }) => {
   const [projectReferences, setProjectReferences] = useState<DocumentReference[]>([]);
   const [conversationReferences, setConversationReferences] = useState<DocumentReference[]>([]);
@@ -30,6 +42,14 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   const [hoveredDoc, setHoveredDoc] = useState<{ type: 'project' | 'conversation'; id: number } | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<DocumentReference | null>(null);
   const [showDocumentDetailModal, setShowDocumentDetailModal] = useState(false);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
+  // 自动滚动到日志底部
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [executionLogs]);
 
   // 加载引用文档
   const loadReferencedDocuments = async () => {
@@ -61,150 +81,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   useEffect(() => {
     loadReferencedDocuments();
   }, [conversationId]);
-
-  // 打开文档新页面 - 更新版本显示
-  const openDocumentInNewWindow = (doc: DocumentReference) => {
-    const newWindow = window.open('', '_blank');
-    if (newWindow) {
-      newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>${doc.document_filename} (v${doc.document_version})</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                line-height: 1.6;
-                max-width: 1000px;
-                margin: 0 auto;
-                padding: 20px;
-                background: #fff;
-                color: #333;
-              }
-              .header {
-                border-bottom: 2px solid #eee;
-                padding-bottom: 20px;
-                margin-bottom: 30px;
-              }
-              .title {
-                font-size: 28px;
-                font-weight: 600;
-                margin: 0 0 10px 0;
-                color: #1a73e8;
-              }
-              .meta {
-                font-size: 14px;
-                color: #666;
-                display: flex;
-                gap: 20px;
-                flex-wrap: wrap;
-              }
-              .version-badge {
-                background: #e3f2fd;
-                color: #1976d2;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-weight: 500;
-              }
-              .content {
-                font-size: 16px;
-                line-height: 1.7;
-              }
-              .content h1, .content h2, .content h3, .content h4, .content h5, .content h6 {
-                margin-top: 30px;
-                margin-bottom: 15px;
-                font-weight: 600;
-              }
-              .content h1 { font-size: 24px; }
-              .content h2 { font-size: 22px; }
-              .content h3 { font-size: 20px; }
-              .content h4 { font-size: 18px; }
-              .content h5 { font-size: 16px; }
-              .content h6 { font-size: 14px; }
-              .content p { margin-bottom: 16px; }
-              .content ul, .content ol { margin-bottom: 16px; padding-left: 30px; }
-              .content li { margin-bottom: 8px; }
-              .content blockquote {
-                border-left: 4px solid #1a73e8;
-                margin: 20px 0;
-                padding: 10px 20px;
-                background: #f8f9fa;
-                color: #555;
-              }
-              .content code {
-                background: #f5f5f5;
-                padding: 2px 6px;
-                border-radius: 3px;
-                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-                font-size: 14px;
-              }
-              .content pre {
-                background: #f5f5f5;
-                padding: 15px;
-                border-radius: 6px;
-                overflow-x: auto;
-                margin: 20px 0;
-              }
-              .content pre code {
-                background: none;
-                padding: 0;
-              }
-              .content table {
-                border-collapse: collapse;
-                width: 100%;
-                margin: 20px 0;
-              }
-              .content th, .content td {
-                border: 1px solid #ddd;
-                padding: 12px;
-                text-align: left;
-              }
-              .content th {
-                background: #f8f9fa;
-                font-weight: 600;
-              }
-              .content a {
-                color: #1a73e8;
-                text-decoration: none;
-              }
-              .content a:hover {
-                text-decoration: underline;
-              }
-              @media (max-width: 768px) {
-                body { padding: 15px; }
-                .title { font-size: 24px; }
-                .meta { flex-direction: column; gap: 10px; }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1 class="title">${doc.document_filename}</h1>
-              <div class="meta">
-                <span>文档ID: ${doc.document_id}</span>
-                <span class="version-badge">版本: v${doc.document_version}</span>
-                <span>创建时间: ${new Date(doc.document_created_time).toLocaleString()}</span>
-              </div>
-            </div>
-            <div class="content" id="content"></div>
-            <script>
-              const content = ${JSON.stringify(doc.document_content || '')};
-              const contentElement = document.getElementById('content');
-              if (typeof marked !== 'undefined') {
-                contentElement.innerHTML = marked.parse(content);
-              } else {
-                contentElement.innerHTML = '<pre>' + content + '</pre>';
-              }
-            </script>
-          </body>
-        </html>
-      `);
-      newWindow.document.close();
-    }
-  };
 
   // 打开文档详情弹窗
   const handleDocumentClick = (doc: DocumentReference) => {
@@ -281,6 +157,29 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     onRefresh?.();
   };
 
+  // 获取日志类型对应的样式
+  const getLogTypeStyle = (type: string) => {
+    switch (type) {
+      case 'error':
+        return { color: '#f44336', fontWeight: 'bold' };
+      case 'warning':
+        return { color: '#ff9800', fontWeight: 'bold' };
+      case 'summary':
+        return { color: '#9c27b0', fontWeight: 'bold' };
+      default:
+        return { color: '#666' };
+    }
+  };
+
+  // 格式化时间戳
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      return new Date(timestamp).toLocaleTimeString();
+    } catch {
+      return timestamp;
+    }
+  };
+
   if (!conversationId) {
     return (
       <div style={{ 
@@ -303,239 +202,337 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     <div style={{ 
       width: '120px', 
       borderLeft: '1px solid #ccc', 
-      padding: '10px',
       background: '#f9f9fc',
       height: '100vh',
-      overflow: 'auto',
       display: 'flex',
       flexDirection: 'column'
     }}>
-      <h4 style={{ 
-        margin: '0 0 16px 0', 
-        fontSize: '14px', 
-        fontWeight: 'bold',
-        color: '#333'
+      {/* D1: 知识库引用区域 (上半部分) */}
+      <div style={{
+        flex: '0 0 50%',
+        padding: '10px',
+        overflow: 'auto',
+        borderBottom: '1px solid #ddd'
       }}>
-        知识库
-      </h4>
+        <h4 style={{ 
+          margin: '0 0 16px 0', 
+          fontSize: '14px', 
+          fontWeight: 'bold',
+          color: '#333'
+        }}>
+          知识库
+        </h4>
 
-      {loading && (
-        <div style={{ color: '#888', fontSize: '12px', textAlign: 'center' }}>
-          加载中...
+        {loading && (
+          <div style={{ color: '#888', fontSize: '12px', textAlign: 'center' }}>
+            加载中...
+          </div>
+        )}
+
+        {!loading && (
+          <>
+            {/* 项目级引用 */}
+            <div style={{ marginBottom: '20px' }}>
+              <div 
+                style={{ 
+                  fontSize: '13px', 
+                  fontWeight: '600', 
+                  marginBottom: '8px',
+                  cursor: 'pointer',
+                  color: '#1a73e8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+                onClick={() => setShowProjectReferenceModal(true)}
+                title="点击编辑项目级引用"
+              >
+                <span>项目级引用</span>
+                <span style={{ fontSize: '10px' }}>✏️</span>
+              </div>
+              
+              {projectReferences.length === 0 ? (
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#888',
+                  fontStyle: 'italic',
+                  padding: '4px 0'
+                }}>
+                  暂无引用
+                </div>
+              ) : (
+                <div>
+                  {projectReferences.map((doc) => (
+                    <div
+                      key={doc.id}
+                      style={{
+                        fontSize: '11px',
+                        padding: '4px 6px',
+                        marginBottom: '4px',
+                        background: '#e8f0fe',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        border: '1px solid #d0e4ff',
+                        wordBreak: 'break-word',
+                        lineHeight: '1.3',
+                        position: 'relative',
+                      }}
+                      onClick={() => handleDocumentClick(doc)}
+                      onMouseEnter={() => setHoveredDoc({ type: 'project', id: doc.id })}
+                      onMouseLeave={() => setHoveredDoc(null)}
+                      title={`${doc.document_filename} (v${doc.document_version})`}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between' 
+                      }}>
+                        <span style={{ 
+                          flex: 1, 
+                          minWidth: 0, 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          whiteSpace: 'nowrap',
+                          marginRight: '4px'
+                        }}>
+                          {doc.document_filename.length > 10 
+                            ? doc.document_filename.slice(0, 10) + '...'
+                            : doc.document_filename
+                          }
+                        </span>
+                        {hoveredDoc?.type === 'project' && hoveredDoc?.id === doc.id ? (
+                          <span
+                            style={{
+                              color: '#f44336',
+                              fontWeight: 'bold',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              padding: '0 2px',
+                              borderRadius: '2px',
+                              background: 'rgba(244, 67, 54, 0.1)'
+                            }}
+                            onClick={(e) => handleQuickRemove(doc, 'project', e)}
+                            title="删除引用"
+                          >
+                            ×
+                          </span>
+                        ) : (
+                          <span style={{ 
+                            fontSize: '10px', 
+                            color: '#666',
+                            fontStyle: 'italic',
+                            flexShrink: 0
+                          }}>
+                            v{doc.document_version}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 会话级引用 */}
+            <div>
+              <div 
+                style={{ 
+                  fontSize: '13px', 
+                  fontWeight: '600', 
+                  marginBottom: '8px',
+                  cursor: 'pointer',
+                  color: '#1a73e8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+                onClick={() => setShowConversationReferenceModal(true)}
+                title="点击编辑会话级引用"
+              >
+                <span>会话级引用</span>
+                <span style={{ fontSize: '10px' }}>✏️</span>
+              </div>
+              
+              {conversationReferences.length === 0 ? (
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#888',
+                  fontStyle: 'italic',
+                  padding: '4px 0'
+                }}>
+                  暂无引用
+                </div>
+              ) : (
+                <div>
+                  {conversationReferences.map((doc) => (
+                    <div
+                      key={doc.id}
+                      style={{
+                        fontSize: '11px',
+                        padding: '4px 6px',
+                        marginBottom: '4px',
+                        background: '#f1f3f4',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        border: '1px solid #e0e0e0',
+                        wordBreak: 'break-word',
+                        lineHeight: '1.3',
+                        position: 'relative',
+                      }}
+                      onClick={() => handleDocumentClick(doc)}
+                      onMouseEnter={() => setHoveredDoc({ type: 'conversation', id: doc.id })}
+                      onMouseLeave={() => setHoveredDoc(null)}
+                      title={`${doc.document_filename} (v${doc.document_version})`}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between' 
+                      }}>
+                        <span style={{ 
+                          flex: 1, 
+                          minWidth: 0, 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          whiteSpace: 'nowrap',
+                          marginRight: '4px'
+                        }}>
+                          {doc.document_filename.length > 10 
+                            ? doc.document_filename.slice(0, 10) + '...'
+                            : doc.document_filename
+                          }
+                        </span>
+                        {hoveredDoc?.type === 'conversation' && hoveredDoc?.id === doc.id ? (
+                          <span
+                            style={{
+                              color: '#f44336',
+                              fontWeight: 'bold',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              padding: '0 2px',
+                              borderRadius: '2px',
+                              background: 'rgba(244, 67, 54, 0.1)'
+                            }}
+                            onClick={(e) => handleQuickRemove(doc, 'conversation', e)}
+                            title="删除引用"
+                          >
+                            ×
+                          </span>
+                        ) : (
+                          <span style={{ 
+                            fontSize: '10px', 
+                            color: '#666',
+                            fontStyle: 'italic',
+                            flexShrink: 0
+                          }}>
+                            v{doc.document_version}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* D2: 执行日志区域 (下半部分) */}
+      <div style={{
+        flex: '0 0 50%',
+        padding: '10px',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px'
+        }}>
+          <h4 style={{ 
+            margin: 0, 
+            fontSize: '14px', 
+            fontWeight: 'bold',
+            color: '#333'
+          }}>
+            执行日志
+          </h4>
+          {executionLogs.length > 0 && onClearLogs && (
+            <button
+              onClick={onClearLogs}
+              style={{
+                background: 'none',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                padding: '2px 6px',
+                fontSize: '10px',
+                cursor: 'pointer',
+                color: '#666'
+              }}
+              title="清空日志"
+            >
+              清空
+            </button>
+          )}
         </div>
-      )}
 
-      {!loading && (
-        <>
-          {/* 项目级引用 */}
-          <div style={{ marginBottom: '20px' }}>
-            <div 
-              style={{ 
-                fontSize: '13px', 
-                fontWeight: '600', 
-                marginBottom: '8px',
-                cursor: 'pointer',
-                color: '#1a73e8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-              onClick={() => setShowProjectReferenceModal(true)}
-              title="点击编辑项目级引用"
-            >
-              <span>项目级引用</span>
-              <span style={{ fontSize: '10px' }}>✏️</span>
+        <div
+          ref={logContainerRef}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '10px',
+            lineHeight: 1.4,
+            background: '#fafafa',
+            border: '1px solid #eee',
+            borderRadius: '4px',
+            padding: '6px'
+          }}
+        >
+          {executionLogs.length === 0 ? (
+            <div style={{ color: '#999', textAlign: 'center', marginTop: '20px', fontSize: '11px' }}>
+              暂无执行日志
             </div>
-            
-            {projectReferences.length === 0 ? (
-              <div style={{ 
-                fontSize: '11px', 
-                color: '#888',
-                fontStyle: 'italic',
-                padding: '4px 0'
-              }}>
-                暂无引用
+          ) : (
+            executionLogs.map((log) => (
+              <div
+                key={log.id}
+                style={{
+                  marginBottom: '8px',
+                  padding: '6px',
+                  background: '#fff',
+                  borderRadius: '4px',
+                  border: '1px solid #eee',
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginBottom: '4px'
+                }}>
+                  <span style={{ fontSize: '9px', color: '#999' }}>
+                    {formatTimestamp(log.timestamp)}
+                  </span>
+                  <span style={{
+                    ...getLogTypeStyle(log.type),
+                    fontSize: '9px',
+                    textTransform: 'uppercase'
+                  }}>
+                    {log.type}
+                  </span>
+                </div>
+                <div style={{ fontSize: '10px', wordBreak: 'break-word' }}>
+                  {typeof log.data === 'object' ? JSON.stringify(log.data, null, 2) : log.data || log.message}
+                </div>
               </div>
-            ) : (
-              <div>
-                {projectReferences.map((doc) => (
-                  <div
-                    key={doc.id}
-                    style={{
-                      fontSize: '11px',
-                      padding: '4px 6px',
-                      marginBottom: '4px',
-                      background: '#e8f0fe',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      border: '1px solid #d0e4ff',
-                      wordBreak: 'break-word',
-                      lineHeight: '1.3',
-                      position: 'relative',
-                    }}
-                    onClick={() => handleDocumentClick(doc)}
-                    onMouseEnter={() => setHoveredDoc({ type: 'project', id: doc.id })}
-                    onMouseLeave={() => setHoveredDoc(null)}
-                    title={`${doc.document_filename} (v${doc.document_version})`}
-                  >
-                    {/* 文档名称和版本号在一行，版本号靠右 */}
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between' 
-                    }}>
-                      <span style={{ 
-                        flex: 1, 
-                        minWidth: 0, 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis', 
-                        whiteSpace: 'nowrap',
-                        marginRight: '4px'
-                      }}>
-                        {doc.document_filename.length > 10 
-                          ? doc.document_filename.slice(0, 10) + '...'
-                          : doc.document_filename
-                        }
-                      </span>
-                      {/* 版本号或删除按钮 */}
-                      {hoveredDoc?.type === 'project' && hoveredDoc?.id === doc.id ? (
-                        <span
-                          style={{
-                            color: '#f44336',
-                            fontWeight: 'bold',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            padding: '0 2px',
-                            borderRadius: '2px',
-                            background: 'rgba(244, 67, 54, 0.1)'
-                          }}
-                          onClick={(e) => handleQuickRemove(doc, 'project', e)}
-                          title="删除引用"
-                        >
-                          ×
-                        </span>
-                      ) : (
-                        <span style={{ 
-                          fontSize: '10px', 
-                          color: '#666',
-                          fontStyle: 'italic',
-                          flexShrink: 0
-                        }}>
-                          v{doc.document_version}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 会话级引用 */}
-          <div>
-            <div 
-              style={{ 
-                fontSize: '13px', 
-                fontWeight: '600', 
-                marginBottom: '8px',
-                cursor: 'pointer',
-                color: '#1a73e8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-              onClick={() => setShowConversationReferenceModal(true)}
-              title="点击编辑会话级引用"
-            >
-              <span>会话级引用</span>
-              <span style={{ fontSize: '10px' }}>✏️</span>
-            </div>
-            
-            {conversationReferences.length === 0 ? (
-              <div style={{ 
-                fontSize: '11px', 
-                color: '#888',
-                fontStyle: 'italic',
-                padding: '4px 0'
-              }}>
-                暂无引用
-              </div>
-            ) : (
-              <div>
-                {conversationReferences.map((doc) => (
-                  <div
-                    key={doc.id}
-                    style={{
-                      fontSize: '11px',
-                      padding: '4px 6px',
-                      marginBottom: '4px',
-                      background: '#f1f3f4',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      border: '1px solid #e0e0e0',
-                      wordBreak: 'break-word',
-                      lineHeight: '1.3',
-                      position: 'relative',
-                    }}
-                    onClick={() => handleDocumentClick(doc)}
-                    onMouseEnter={() => setHoveredDoc({ type: 'conversation', id: doc.id })}
-                    onMouseLeave={() => setHoveredDoc(null)}
-                    title={`${doc.document_filename} (v${doc.document_version})`}
-                  >
-                    {/* 文档名称和版本号在一行，版本号靠右 */}
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between' 
-                    }}>
-                      <span style={{ 
-                        flex: 1, 
-                        minWidth: 0, 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis', 
-                        whiteSpace: 'nowrap',
-                        marginRight: '4px'
-                      }}>
-                        {doc.document_filename.length > 10 
-                          ? doc.document_filename.slice(0, 10) + '...'
-                          : doc.document_filename
-                        }
-                      </span>
-                      {/* 版本号或删除按钮 */}
-                      {hoveredDoc?.type === 'conversation' && hoveredDoc?.id === doc.id ? (
-                        <span
-                          style={{
-                            color: '#f44336',
-                            fontWeight: 'bold',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            padding: '0 2px',
-                            borderRadius: '2px',
-                            background: 'rgba(244, 67, 54, 0.1)'
-                          }}
-                          onClick={(e) => handleQuickRemove(doc, 'conversation', e)}
-                          title="删除引用"
-                        >
-                          ×
-                        </span>
-                      ) : (
-                        <span style={{ 
-                          fontSize: '10px', 
-                          color: '#666',
-                          fontStyle: 'italic',
-                          flexShrink: 0
-                        }}>
-                          v{doc.document_version}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+            ))
+          )}
+        </div>
+      </div>
 
       {/* 项目级引用编辑弹窗 */}
       {showProjectReferenceModal && currentMeta?.projectId && (
