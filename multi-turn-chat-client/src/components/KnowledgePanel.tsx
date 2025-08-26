@@ -9,6 +9,7 @@ import {
 } from '../api';
 import ProjectReferenceModal from './ProjectReferenceModal';
 import ConversationReferenceModal from './ConversationReferenceModal';
+import DocumentDetailModal from './DocumentDetailModal';
 
 interface KnowledgePanelProps {
   conversationId: string;
@@ -27,6 +28,8 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   const [showProjectReferenceModal, setShowProjectReferenceModal] = useState(false);
   const [showConversationReferenceModal, setShowConversationReferenceModal] = useState(false);
   const [hoveredDoc, setHoveredDoc] = useState<{ type: 'project' | 'conversation'; id: number } | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentReference | null>(null);
+  const [showDocumentDetailModal, setShowDocumentDetailModal] = useState(false);
 
   // 加载引用文档
   const loadReferencedDocuments = async () => {
@@ -39,8 +42,13 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     setLoading(true);
     try {
       const data = await getConversationReferencedDocuments(conversationId);
-      setProjectReferences(data.project_references || []);
-      setConversationReferences(data.conversation_references || []);
+      // 按ID倒序排序项目级引用
+      const sortedProjectRefs = (data.project_references || []).sort((a, b) => b.document_id - a.document_id);
+      // 按ID倒序排序会话级引用
+      const sortedConversationRefs = (data.conversation_references || []).sort((a, b) => b.document_id - a.document_id);
+      
+      setProjectReferences(sortedProjectRefs);
+      setConversationReferences(sortedConversationRefs);
     } catch (error) {
       console.error('加载引用文档失败:', error);
       setProjectReferences([]);
@@ -54,15 +62,15 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     loadReferencedDocuments();
   }, [conversationId]);
 
-  // 打开文档新页面
-  const handleDocumentClick = (doc: DocumentReference) => {
+  // 打开文档新页面 - 更新版本显示
+  const openDocumentInNewWindow = (doc: DocumentReference) => {
     const newWindow = window.open('', '_blank');
     if (newWindow) {
       newWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
-            <title>${doc.document_filename}</title>
+            <title>${doc.document_filename} (v${doc.document_version})</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -93,6 +101,13 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                 display: flex;
                 gap: 20px;
                 flex-wrap: wrap;
+              }
+              .version-badge {
+                background: #e3f2fd;
+                color: #1976d2;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-weight: 500;
               }
               .content {
                 font-size: 16px;
@@ -170,7 +185,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
               <h1 class="title">${doc.document_filename}</h1>
               <div class="meta">
                 <span>文档ID: ${doc.document_id}</span>
-                <span>版本: ${doc.document_version}</span>
+                <span class="version-badge">版本: v${doc.document_version}</span>
                 <span>创建时间: ${new Date(doc.document_created_time).toLocaleString()}</span>
               </div>
             </div>
@@ -188,6 +203,47 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         </html>
       `);
       newWindow.document.close();
+    }
+  };
+
+  // 打开文档详情弹窗
+  const handleDocumentClick = (doc: DocumentReference) => {
+    setSelectedDocument(doc);
+    setShowDocumentDetailModal(true);
+  };
+
+  // 处理文档ID变更（编辑后创建新版本）
+  const handleDocumentChange = async (newDocumentId: number) => {
+    if (!selectedDocument) return;
+
+    try {
+      const oldDocumentId = selectedDocument.document_id;
+      
+      // 根据文档类型更新引用关系
+      if (projectReferences.some(ref => ref.document_id === oldDocumentId)) {
+        // 项目级引用
+        if (currentMeta?.projectId) {
+          const currentRefs = await getProjectDocumentReferences(currentMeta.projectId);
+          const currentRefIds = currentRefs.map((ref: any) => ref.document_id);
+          // 替换旧ID为新ID
+          const newRefIds = currentRefIds.map(id => id === oldDocumentId ? newDocumentId : id);
+          await setProjectDocumentReferences(currentMeta.projectId, newRefIds);
+        }
+      } else if (conversationReferences.some(ref => ref.document_id === oldDocumentId)) {
+        // 会话级引用
+        const currentRefs = await getConversationDocumentReferences(conversationId);
+        const currentRefIds = currentRefs.map((ref: any) => ref.document_id);
+        // 替换旧ID为新ID
+        const newRefIds = currentRefIds.map(id => id === oldDocumentId ? newDocumentId : id);
+        await setConversationDocumentReferences(conversationId, newRefIds);
+      }
+
+      // 重新加载引用文档
+      await loadReferencedDocuments();
+      onRefresh?.();
+    } catch (error) {
+      console.error('更新文档引用关系失败:', error);
+      alert('更新文档引用关系失败: ' + (error as any)?.message);
     }
   };
 
@@ -316,39 +372,59 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                       wordBreak: 'break-word',
                       lineHeight: '1.3',
                       position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
                     }}
                     onClick={() => handleDocumentClick(doc)}
                     onMouseEnter={() => setHoveredDoc({ type: 'project', id: doc.id })}
                     onMouseLeave={() => setHoveredDoc(null)}
-                    title={doc.document_filename}
+                    title={`${doc.document_filename} (v${doc.document_version})`}
                   >
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {doc.document_filename.length > 15 
-                        ? doc.document_filename.slice(0, 15) + '...'
-                        : doc.document_filename
-                      }
-                    </span>
-                    {hoveredDoc?.type === 'project' && hoveredDoc?.id === doc.id && (
-                      <span
-                        style={{
-                          marginLeft: '4px',
-                          color: '#f44336',
-                          fontWeight: 'bold',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          padding: '0 2px',
-                          borderRadius: '2px',
-                          background: 'rgba(244, 67, 54, 0.1)'
-                        }}
-                        onClick={(e) => handleQuickRemove(doc, 'project', e)}
-                        title="删除引用"
-                      >
-                        ×
+                    {/* 文档名称和版本号在一行，版本号靠右 */}
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between' 
+                    }}>
+                      <span style={{ 
+                        flex: 1, 
+                        minWidth: 0, 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        whiteSpace: 'nowrap',
+                        marginRight: '4px'
+                      }}>
+                        {doc.document_filename.length > 10 
+                          ? doc.document_filename.slice(0, 10) + '...'
+                          : doc.document_filename
+                        }
                       </span>
-                    )}
+                      {/* 版本号或删除按钮 */}
+                      {hoveredDoc?.type === 'project' && hoveredDoc?.id === doc.id ? (
+                        <span
+                          style={{
+                            color: '#f44336',
+                            fontWeight: 'bold',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            padding: '0 2px',
+                            borderRadius: '2px',
+                            background: 'rgba(244, 67, 54, 0.1)'
+                          }}
+                          onClick={(e) => handleQuickRemove(doc, 'project', e)}
+                          title="删除引用"
+                        >
+                          ×
+                        </span>
+                      ) : (
+                        <span style={{ 
+                          fontSize: '10px', 
+                          color: '#666',
+                          fontStyle: 'italic',
+                          flexShrink: 0
+                        }}>
+                          v{doc.document_version}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -400,39 +476,59 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                       wordBreak: 'break-word',
                       lineHeight: '1.3',
                       position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
                     }}
                     onClick={() => handleDocumentClick(doc)}
                     onMouseEnter={() => setHoveredDoc({ type: 'conversation', id: doc.id })}
                     onMouseLeave={() => setHoveredDoc(null)}
-                    title={doc.document_filename}
+                    title={`${doc.document_filename} (v${doc.document_version})`}
                   >
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {doc.document_filename.length > 15 
-                        ? doc.document_filename.slice(0, 15) + '...'
-                        : doc.document_filename
-                      }
-                    </span>
-                    {hoveredDoc?.type === 'conversation' && hoveredDoc?.id === doc.id && (
-                      <span
-                        style={{
-                          marginLeft: '4px',
-                          color: '#f44336',
-                          fontWeight: 'bold',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          padding: '0 2px',
-                          borderRadius: '2px',
-                          background: 'rgba(244, 67, 54, 0.1)'
-                        }}
-                        onClick={(e) => handleQuickRemove(doc, 'conversation', e)}
-                        title="删除引用"
-                      >
-                        ×
+                    {/* 文档名称和版本号在一行，版本号靠右 */}
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between' 
+                    }}>
+                      <span style={{ 
+                        flex: 1, 
+                        minWidth: 0, 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        whiteSpace: 'nowrap',
+                        marginRight: '4px'
+                      }}>
+                        {doc.document_filename.length > 10 
+                          ? doc.document_filename.slice(0, 10) + '...'
+                          : doc.document_filename
+                        }
                       </span>
-                    )}
+                      {/* 版本号或删除按钮 */}
+                      {hoveredDoc?.type === 'conversation' && hoveredDoc?.id === doc.id ? (
+                        <span
+                          style={{
+                            color: '#f44336',
+                            fontWeight: 'bold',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            padding: '0 2px',
+                            borderRadius: '2px',
+                            background: 'rgba(244, 67, 54, 0.1)'
+                          }}
+                          onClick={(e) => handleQuickRemove(doc, 'conversation', e)}
+                          title="删除引用"
+                        >
+                          ×
+                        </span>
+                      ) : (
+                        <span style={{ 
+                          fontSize: '10px', 
+                          color: '#666',
+                          fontStyle: 'italic',
+                          flexShrink: 0
+                        }}>
+                          v{doc.document_version}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -459,6 +555,20 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
           projectId={currentMeta.projectId}
           onClose={() => setShowConversationReferenceModal(false)}
           onUpdate={handleRefreshReferences}
+        />
+      )}
+
+      {/* 文档详情弹窗 */}
+      {showDocumentDetailModal && selectedDocument && (
+        <DocumentDetailModal
+          visible={true}
+          document={selectedDocument}
+          onClose={() => {
+            setShowDocumentDetailModal(false);
+            setSelectedDocument(null);
+          }}
+          onUpdate={handleRefreshReferences}
+          onDocumentChange={handleDocumentChange}
         />
       )}
     </div>

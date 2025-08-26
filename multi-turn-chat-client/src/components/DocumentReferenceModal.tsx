@@ -8,6 +8,7 @@ import {
   setConversationDocumentReferences
 } from '../api';
 import AddDocumentModal from './AddDocumentModal';
+import DocumentDetailModal from './DocumentDetailModal';
 
 interface DocumentReferenceModalProps {
   visible: boolean;
@@ -33,6 +34,8 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
   const [projectReferencedIds, setProjectReferencedIds] = useState<number[]>([]);
   const [showAddDocumentModal, setShowAddDocumentModal] = useState(false);
+  const [showDocumentDetailModal, setShowDocumentDetailModal] = useState(false);
+  const [selectedDocumentForEdit, setSelectedDocumentForEdit] = useState<any>(null);
 
   // 获取标题和描述
   const getTitle = () => type === 'project' ? '编辑项目级引用' : '编辑会话级引用';
@@ -55,7 +58,9 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
           getProjectDocumentReferences(projectId)
         ]);
 
-        setAvailableDocuments(docsResponse || []);
+        // 按ID倒序排序
+        const sortedDocs = (docsResponse || []).sort((a, b) => b.id - a.id);
+        setAvailableDocuments(sortedDocs);
         const currentRefIds = (refsResponse || []).map((ref: any) => ref.document_id);
         setCurrentReferences(currentRefIds);
         setSelectedDocuments([...currentRefIds]);
@@ -73,8 +78,10 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
         const allDocs = docsResponse || [];
         const projRefIds = (projRefsResponse || []).map((ref: any) => ref.document_id);
         
-        // 过滤出可选择的文档（排除项目级已引用的）
-        const selectableDocs = allDocs.filter(doc => !projRefIds.includes(doc.id));
+        // 过滤出可选择的文档（排除项目级已引用的）并按ID倒序排序
+        const selectableDocs = allDocs
+          .filter(doc => !projRefIds.includes(doc.id))
+          .sort((a, b) => b.id - a.id);
         
         setAvailableDocuments(selectableDocs);
         setProjectReferencedIds(projRefIds);
@@ -155,6 +162,29 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
     loadData();
   };
 
+  // 打开编辑文档弹窗
+  const handleEditDocument = (doc: KnowledgeDocument, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // 转换为DocumentReference格式
+    setSelectedDocumentForEdit({
+      id: doc.id,
+      document_id: doc.id,
+      document_filename: doc.filename,
+      document_content: doc.content,
+      document_version: doc.version,
+      document_created_time: doc.created_time,
+    });
+    setShowDocumentDetailModal(true);
+  };
+
+  // 编辑文档成功后的回调
+  const handleDocumentEditSuccess = () => {
+    setShowDocumentDetailModal(false);
+    setSelectedDocumentForEdit(null);
+    // 重新加载文档列表
+    loadData();
+  };
+
   // 键盘快捷键支持
   useEffect(() => {
     if (!visible) return;
@@ -164,13 +194,16 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
         e.preventDefault();
         if (showAddDocumentModal) {
           setShowAddDocumentModal(false);
+        } else if (showDocumentDetailModal) {
+          setShowDocumentDetailModal(false);
+          setSelectedDocumentForEdit(null);
         } else {
           handleCancel();
         }
       }
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        if (!showAddDocumentModal) {
+        if (!showAddDocumentModal && !showDocumentDetailModal) {
           handleSave();
         }
       }
@@ -178,7 +211,7 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
     
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
-  }, [visible, selectedDocuments, showAddDocumentModal]);
+  }, [visible, selectedDocuments, showAddDocumentModal, showDocumentDetailModal]);
 
   if (!visible) return null;
 
@@ -319,22 +352,55 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                               fontSize: 16,
                               color: '#333',
                               marginBottom: 8,
-                              wordBreak: 'break-word'
+                              wordBreak: 'break-word',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between'
                             }}>
-                              {doc.filename}
-                              {isCurrentlyReferenced && (
-                                <span style={{
-                                  marginLeft: 12,
-                                  padding: '4px 8px',
-                                  background: '#e8f5e8',
-                                  color: '#2e7d32',
-                                  fontSize: 12,
-                                  borderRadius: 4,
-                                  fontWeight: 'normal'
-                                }}>
-                                  当前引用
-                                </span>
-                              )}
+                              <span style={{ flex: 1 }}>
+                                {doc.filename}
+                                {isCurrentlyReferenced && (
+                                  <span style={{
+                                    marginLeft: 12,
+                                    padding: '4px 8px',
+                                    background: '#e8f5e8',
+                                    color: '#2e7d32',
+                                    fontSize: 12,
+                                    borderRadius: 4,
+                                    fontWeight: 'normal'
+                                  }}>
+                                    当前引用
+                                  </span>
+                                )}
+                              </span>
+                              {/* 编辑图标 */}
+                              <button
+                                onClick={(e) => handleEditDocument(doc, e)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: '4px',
+                                  color: '#666',
+                                  fontSize: '16px',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                title="编辑文档"
+                                onMouseEnter={(e) => {
+                                  (e.target as HTMLElement).style.background = '#f0f0f0';
+                                  (e.target as HTMLElement).style.color = '#1a73e8';
+                                }}
+                                onMouseLeave={(e) => {
+                                  (e.target as HTMLElement).style.background = 'none';
+                                  (e.target as HTMLElement).style.color = '#666';
+                                }}
+                              >
+                                ✏️
+                              </button>
                             </div>
                             <div style={{ 
                               fontSize: 14, 
@@ -345,7 +411,7 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                               flexWrap: 'wrap'
                             }}>
                               <span>ID: {doc.id}</span>
-                              <span>版本: {doc.version}</span>
+                              <span>版本: v{doc.version}</span>
                               <span>创建: {new Date(doc.created_time).toLocaleDateString()}</span>
                             </div>
                             <div style={{ 
@@ -425,23 +491,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                     知识库文档列表 ({availableDocuments.length})
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {/* 新增按钮 */}
-                    <button
-                      onClick={() => setShowAddDocumentModal(true)}
-                      style={{
-                        padding: '6px 12px',
-                        background: '#4caf50',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontSize: 12,
-                        fontWeight: 500,
-                      }}
-                      title="新增文档"
-                    >
-                      + 添加
-                    </button>
                     {/* 全选按钮 */}
                     {availableDocuments.length > 0 && (
                       <button
@@ -478,7 +527,7 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
               )}
             </div>
 
-            {/* 底部操作按钮 */}
+            {/* 底部操作按钮 - 恢复垂直布局 */}
             <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <button
@@ -497,6 +546,25 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                 >
                   {saving ? '保存中...' : '保存 (Ctrl+Enter)'}
                 </button>
+                
+                {/* 新增按钮放在保存按钮之后 */}
+                <button
+                  onClick={() => setShowAddDocumentModal(true)}
+                  style={{
+                    padding: '10px 20px',
+                    background: '#4caf50',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: 500,
+                  }}
+                  title="新增文档"
+                >
+                  + 新增文档
+                </button>
+                
                 <button
                   onClick={handleCancel}
                   disabled={saving}
@@ -525,6 +593,19 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
         onClose={() => setShowAddDocumentModal(false)}
         onSuccess={handleAddDocumentSuccess}
       />
+
+      {/* 编辑文档弹窗 */}
+      {showDocumentDetailModal && selectedDocumentForEdit && (
+        <DocumentDetailModal
+          visible={true}
+          document={selectedDocumentForEdit}
+          onClose={() => {
+            setShowDocumentDetailModal(false);
+            setSelectedDocumentForEdit(null);
+          }}
+          onUpdate={handleDocumentEditSuccess}
+        />
+      )}
     </>
   );
 };

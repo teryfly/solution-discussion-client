@@ -451,7 +451,7 @@ export async function getConversationReferencedDocuments(conversationId: string)
   return await res.json();
 }
 
-// 获取可引用的知识库文档列表
+// 获取可引用的知识库文档列表 - 修改为按ID倒序排序
 export async function getKnowledgeDocuments(projectId: number): Promise<any[]> {
   const res = await fetch(`${BASE_URL}/plan/documents/history?project_id=${projectId}&category_id=5`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -460,7 +460,9 @@ export async function getKnowledgeDocuments(projectId: number): Promise<any[]> {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.message || `获取知识库文档失败: ${res.status}`);
   }
-  return await res.json();
+  const data = await res.json();
+  // 按ID倒序排序
+  return (data || []).sort((a: any, b: any) => b.id - a.id);
 }
 
 // 查询项目级引用

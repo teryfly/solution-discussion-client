@@ -43,15 +43,12 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
   // 表单验证
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
     if (!formData.filename.trim()) {
       newErrors.filename = '文件名不能为空';
     }
-    
     if (!formData.content.trim()) {
       newErrors.content = '内容不能为空';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -70,9 +67,9 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
         version: 1,
         source: 'user',
       });
-
       onSuccess?.();
       onClose();
+      // 移除成功提示弹窗
     } catch (error) {
       console.error('创建文档失败:', error);
       setErrors({ submit: (error as any)?.message || '创建文档失败' });
@@ -92,7 +89,7 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
   // 键盘快捷键支持
   useEffect(() => {
     if (!visible) return;
-    
+
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -103,7 +100,7 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
         handleSave();
       }
     };
-    
+
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
   }, [visible, formData, saving]);
@@ -116,20 +113,18 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
         position: 'fixed',
         inset: 0,
         background: 'rgba(0, 0, 0, 0.7)',
-        zIndex: 10001, // 比DocumentReferenceModal的zIndex高
+        zIndex: 10001,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
       }}
     >
       <div
         style={{
           background: '#fff',
           borderRadius: 12,
-          width: '90%',
-          maxWidth: 800,
-          maxHeight: '80%',
+          width: '100vw',
+          height: '100vh',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
@@ -144,9 +139,10 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
             justifyContent: 'space-between',
             alignItems: 'center',
             flexShrink: 0,
+            background: '#f8f9fa',
           }}
         >
-          <h2 style={{ margin: 0, fontSize: 20, color: '#333' }}>
+          <h2 style={{ margin: 0, fontSize: 24, color: '#333' }}>
             新增文档
           </h2>
           <button
@@ -154,12 +150,12 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
             style={{
               background: 'none',
               border: 'none',
-              fontSize: 24,
+              fontSize: 32,
               cursor: 'pointer',
               color: '#999',
               padding: 0,
-              width: 32,
-              height: 32,
+              width: 40,
+              height: 40,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -171,102 +167,114 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
         </div>
 
         {/* 内容区域 */}
-        <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
-          {errors.submit && (
-            <div style={{
-              color: '#f44336',
-              background: '#ffebee',
-              padding: '12px 16px',
-              borderRadius: 6,
-              marginBottom: 20,
-              fontSize: 14,
-            }}>
-              {errors.submit}
-            </div>
-          )}
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <div style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column',
+            padding: '24px',
+            overflow: 'auto'
+          }}>
+            {errors.submit && (
+              <div style={{
+                color: '#f44336',
+                background: '#ffebee',
+                padding: '16px 20px',
+                borderRadius: 8,
+                marginBottom: 24,
+                fontSize: 16,
+                border: '1px solid #ffcdd2',
+              }}>
+                {errors.submit}
+              </div>
+            )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* 文件名 */}
-            <div>
-              <label style={{ display: 'block', fontWeight: 500, marginBottom: 8 }}>
-                文件名 *
-              </label>
-              <input
-                type="text"
-                value={formData.filename}
-                onChange={(e) => handleInputChange('filename', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: `1px solid ${errors.filename ? '#f44336' : '#ccc'}`,
-                  borderRadius: 6,
-                  fontSize: 15,
-                  boxSizing: 'border-box',
-                }}
-                placeholder="请输入文件名，如：项目需求文档.md"
-                disabled={saving}
-              />
-              {errors.filename && (
-                <div style={{ color: '#f44336', fontSize: 12, marginTop: 4 }}>
-                  {errors.filename}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* 文件名和分类 */}
+              <div style={{ display: 'flex', gap: 24 }}>
+                <div style={{ flex: 2 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 12, fontSize: 16 }}>
+                    文件名 *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.filename}
+                    onChange={(e) => handleInputChange('filename', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: `2px solid ${errors.filename ? '#f44336' : '#e0e0e0'}`,
+                      borderRadius: 8,
+                      fontSize: 16,
+                      boxSizing: 'border-box',
+                      fontFamily: 'monospace',
+                    }}
+                    placeholder="请输入文件名，如：项目需求文档.md"
+                    disabled={saving}
+                  />
+                  {errors.filename && (
+                    <div style={{ color: '#f44336', fontSize: 14, marginTop: 8 }}>
+                      {errors.filename}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* 分类 */}
-            <div>
-              <label style={{ display: 'block', fontWeight: 500, marginBottom: 8 }}>
-                分类
-              </label>
-              <select
-                value={formData.category_id}
-                onChange={(e) => handleInputChange('category_id', Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #ccc',
-                  borderRadius: 6,
-                  fontSize: 15,
-                  boxSizing: 'border-box',
-                }}
-                disabled={saving}
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 内容 */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <label style={{ display: 'block', fontWeight: 500, marginBottom: 8 }}>
-                内容 *
-              </label>
-              <textarea
-                value={formData.content}
-                onChange={(e) => handleInputChange('content', e.target.value)}
-                style={{
-                  flex: 1,
-                  minHeight: 300,
-                  padding: '12px',
-                  border: `1px solid ${errors.content ? '#f44336' : '#ccc'}`,
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontFamily: 'monospace',
-                  lineHeight: 1.5,
-                  resize: 'vertical',
-                  boxSizing: 'border-box',
-                }}
-                placeholder="请输入文档内容，支持Markdown格式"
-                disabled={saving}
-              />
-              {errors.content && (
-                <div style={{ color: '#f44336', fontSize: 12, marginTop: 4 }}>
-                  {errors.content}
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 12, fontSize: 16 }}>
+                    分类
+                  </label>
+                  <select
+                    value={formData.category_id}
+                    onChange={(e) => handleInputChange('category_id', Number(e.target.value))}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: 8,
+                      fontSize: 16,
+                      boxSizing: 'border-box',
+                    }}
+                    disabled={saving}
+                  >
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
+              </div>
+
+              {/* 内容 */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 12, fontSize: 16 }}>
+                  内容 *
+                </label>
+                <textarea
+                  value={formData.content}
+                  onChange={(e) => handleInputChange('content', e.target.value)}
+                  style={{
+                    flex: 1,
+                    minHeight: 400,
+                    padding: '16px',
+                    border: `2px solid ${errors.content ? '#f44336' : '#e0e0e0'}`,
+                    borderRadius: 8,
+                    fontSize: 15,
+                    fontFamily: 'monospace',
+                    lineHeight: 1.6,
+                    resize: 'none',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                  }}
+                  placeholder="请输入文档内容，支持Markdown格式"
+                  disabled={saving}
+                />
+                {errors.content && (
+                  <div style={{ color: '#f44336', fontSize: 14, marginTop: 8 }}>
+                    {errors.content}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -274,24 +282,27 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
         {/* 底部操作栏 */}
         <div
           style={{
-            padding: '16px 24px',
+            padding: '20px 24px',
             borderTop: '1px solid #eee',
             display: 'flex',
             justifyContent: 'flex-end',
-            gap: 12,
+            gap: 16,
             flexShrink: 0,
+            background: '#f8f9fa',
           }}
         >
           <button
             onClick={onClose}
             disabled={saving}
             style={{
-              padding: '8px 16px',
+              padding: '12px 24px',
               background: '#f5f5f5',
               color: '#666',
-              border: '1px solid #ddd',
-              borderRadius: 6,
+              border: '2px solid #ddd',
+              borderRadius: 8,
               cursor: saving ? 'not-allowed' : 'pointer',
+              fontSize: 16,
+              fontWeight: 500,
             }}
           >
             取消
@@ -300,12 +311,14 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = ({
             onClick={handleSave}
             disabled={saving}
             style={{
-              padding: '8px 16px',
+              padding: '12px 24px',
               background: saving ? '#ccc' : '#1a73e8',
               color: '#fff',
               border: 'none',
-              borderRadius: 6,
+              borderRadius: 8,
               cursor: saving ? 'not-allowed' : 'pointer',
+              fontSize: 16,
+              fontWeight: 500,
             }}
           >
             {saving ? '保存中...' : '保存 (Ctrl+Enter)'}
