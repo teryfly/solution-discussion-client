@@ -326,14 +326,14 @@ export async function getPlanCategories(): Promise<{ id: number; name: string }[
   return cleanData;
 }
 
-// 新建计划文档
+// 新建计划文档 - 增强版，支持完整参数
 export async function createPlanDocument({
   project_id,
   filename,
   category_id,
   content,
   version = 1,
-  source = 'chat',
+  source = 'user',
 }: {
   project_id: number;
   filename: string;
