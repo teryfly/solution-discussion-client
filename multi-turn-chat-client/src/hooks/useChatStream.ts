@@ -1,10 +1,10 @@
 // useChatStream.ts
 import React, { useState, useRef, useCallback } from 'react';
-import { sendMessageStream, getConversationReferencedDocuments, getReferencedDocumentsContent } from '../api';
+import { sendMessageStream, getReferencedDocumentsContent } from '../api';
 import { Message } from '../types';
 import { shouldAutoContinue } from '../utils/autoContinue';
 
-// 全局线程管理器
+// 线程管理器
 class ConversationThreadManager {
   private threads = new Map<string, {
     isActive: boolean;
@@ -15,7 +15,6 @@ class ConversationThreadManager {
     onMessageComplete?: (content: string, charCount: number) => void;
   }>();
 
-  // 创建或获取线程
   createThread(
     conversationId: string, 
     appendMessage: (msg: Message, replaceLast?: boolean) => void,
@@ -23,11 +22,9 @@ class ConversationThreadManager {
     getDocumentIds?: () => number[],
     onMessageComplete?: (content: string, charCount: number) => void
   ) {
-    // 如果线程已存在，先停止它
     if (this.threads.has(conversationId)) {
       this.stopThread(conversationId);
     }
-
     const abortController = new AbortController();
     this.threads.set(conversationId, {
       isActive: true,
@@ -37,14 +34,12 @@ class ConversationThreadManager {
       getDocumentIds,
       onMessageComplete
     });
-
     return {
       send: this.createSender(conversationId),
       isActive: () => this.threads.get(conversationId)?.isActive || false
     };
   }
 
-  // 停止指定线程
   stopThread(conversationId: string) {
     const thread = this.threads.get(conversationId);
     if (thread) {
@@ -55,25 +50,16 @@ class ConversationThreadManager {
     }
   }
 
-  // 设置线程为活跃状态（当前显示的会话）
   setActiveThread(conversationId: string) {
-    // 将所有线程设为非活跃
-    this.threads.forEach((thread) => {
-      thread.isActive = false;
-    });
-    // 设置当前线程为活跃
+    this.threads.forEach((thread) => (thread.isActive = false));
     const thread = this.threads.get(conversationId);
-    if (thread) {
-      thread.isActive = true;
-    }
+    if (thread) thread.isActive = true;
   }
 
-  // 检查线程是否活跃
   isThreadActive(conversationId: string): boolean {
     return this.threads.get(conversationId)?.isActive || false;
   }
 
-  // 创建发送器
   private createSender(conversationId: string) {
     return async (input: string, model: string) => {
       const thread = this.threads.get(conversationId);
@@ -85,148 +71,137 @@ class ConversationThreadManager {
       let rounds = 0;
       let userMessageId: number | undefined;
       let assistantMessageId: number | undefined;
+      let hasShownThinking = false; // 是否已经显示动画
+      let firstRealArrived = false; // 是否已收到首个真实内容
+      let streamedReply = '';
 
-      // 内部递归: assistant流式回复
       const sendOne = async (prompt: string) => {
         const currentThread = this.threads.get(conversationId);
-        if (!currentThread || currentThread.abortController.signal.aborted) {
-          return;
-        }
+        if (!currentThread || currentThread.abortController.signal.aborted) return;
 
-        let streamedReply = '';
+        hasShownThinking = false;
+        firstRealArrived = false;
+        streamedReply = '';
         let isFirstChunk = true;
 
-        // 只有活跃线程才显示用户消息和思考动画
         if (currentThread.isActive) {
+          // 1) 追加用户消息
           currentThread.appendMessage({ role: 'user', content: prompt, collapsed: false });
-          // 显示思考动画
-          currentThread.appendMessage(
-            { role: 'assistant', content: '', collapsed: false }
-          );
+          // 2) 追加占位的 assistant（空内容，后续填充为动画或真实数据）
+          currentThread.appendMessage({ role: 'assistant', content: '', collapsed: false });
         }
 
         try {
-          // 动态获取文档ID（保持原有逻辑）
           const documentIds = currentThread.getDocumentIds ? currentThread.getDocumentIds() : [];
-          
-          // 动态获取知识库内容，用于拼接到system prompt
+          // 预取知识库追加
           let knowledgeContent = '';
           try {
             knowledgeContent = await getReferencedDocumentsContent(conversationId);
-          } catch (error) {
-            console.warn('获取知识库内容失败:', error);
+          } catch (err) {
+            console.warn('获取知识库内容失败:', err);
           }
 
           await sendMessageStream(
             conversationId,
             prompt,
             model,
-            documentIds, // 传递文档ID（保持原有逻辑）
-            knowledgeContent, // 传递知识库内容，将拼接到system prompt
+            documentIds,
+            knowledgeContent,
             (chunk, metadata) => {
-              const thread = this.threads.get(conversationId);
-              if (!thread || thread.abortController.signal.aborted) return;
+              const t = this.threads.get(conversationId);
+              if (!t || t.abortController.signal.aborted) return;
 
-              // 第一个chunk时处理消息ID
+              // 首次返回metadata时，补全用户/助手机器消息的ID
               if (isFirstChunk && metadata) {
                 isFirstChunk = false;
-                if (metadata.user_message_id) {
-                  userMessageId = metadata.user_message_id;
-                }
-                if (metadata.assistant_message_id) {
-                  assistantMessageId = metadata.assistant_message_id;
-                }
-                // 只有活跃线程才更新用户消息ID
-                if (thread.isActive && userMessageId) {
-                  thread.appendMessage(
+                if (metadata.user_message_id) userMessageId = metadata.user_message_id;
+                if (metadata.assistant_message_id) assistantMessageId = metadata.assistant_message_id;
+                if (t.isActive && userMessageId) {
+                  t.appendMessage(
                     { role: 'user', content: prompt, collapsed: false, id: userMessageId },
                     false
                   );
                 }
               }
 
-              // 处理内容chunk
-              if (chunk) {
-                streamedReply += chunk;
-                
-                // 只有活跃线程才显示实时消息
-                if (thread.isActive) {
-                  thread.appendMessage(
-                    { 
-                      role: 'assistant', 
-                      content: streamedReply, 
-                      collapsed: false,
-                      id: assistantMessageId 
-                    },
+              // sendMessageStream 的实现会首先回调一次 “思考中...” 动画 chunk
+              if (typeof chunk === 'string') {
+                // 如果是“思考中...”动画且尚未显示，则显示动画
+                if (!firstRealArrived && !hasShownThinking && chunk.includes('waiting-typing')) {
+                  hasShownThinking = true;
+                  // 用动画覆盖占位assistant消息
+                  t.isActive && t.appendMessage(
+                    { role: 'assistant', content: chunk, collapsed: false, id: assistantMessageId },
+                    true
+                  );
+                  return;
+                }
+
+                // 一旦接收到第一段真实内容：
+                // - 需要隐藏动画（通过直接用真实内容覆盖最后一条assistant）
+                // - 之后继续累计真实内容
+                if (chunk && !chunk.includes('waiting-typing')) {
+                  streamedReply += chunk;
+                  firstRealArrived = true;
+                  t.isActive && t.appendMessage(
+                    { role: 'assistant', content: streamedReply, collapsed: false, id: assistantMessageId },
                     true
                   );
                 }
               }
             },
             async () => {
-              const thread = this.threads.get(conversationId);
-              if (!thread || thread.abortController.signal.aborted) return;
+              const t = this.threads.get(conversationId);
+              if (!t || t.abortController.signal.aborted) return;
 
               const { shouldContinue, continueMessage } = shouldAutoContinue(streamedReply, rounds);
               if (shouldContinue) {
                 rounds++;
-                // 移除末尾 [to be continue]（如果有）
                 streamedReply = streamedReply.replace(/\s*\[to be continue\]\s*$/i, '').trim();
-                if (thread.isActive) {
-                  thread.appendMessage(
-                    { 
-                      role: 'assistant', 
-                      content: streamedReply, 
-                      collapsed: false,
-                      id: assistantMessageId 
-                    },
-                    true
-                  );
-                }
+                t.isActive && t.appendMessage(
+                  { role: 'assistant', content: streamedReply, collapsed: false, id: assistantMessageId },
+                  true
+                );
                 await sendOne(continueMessage);
               } else {
-                // 流式真正完成时的处理
-                const finalCharCount = streamedReply.length;
-                
-                if (thread.isActive) {
-                  thread.appendMessage(
-                    { 
-                      role: 'assistant', 
-                      content: streamedReply, 
-                      collapsed: false,
-                      id: assistantMessageId 
-                    },
+                // 如果没有任何真实内容返回（例如极端错误情况下只显示了动画），在完成时清理动画
+                if (!firstRealArrived) {
+                  // 用空或提示文案覆盖，避免动画残留
+                  t.isActive && t.appendMessage(
+                    { role: 'assistant', content: '（暂无输出）', collapsed: false, id: assistantMessageId },
+                    true
+                  );
+                } else {
+                  t.isActive && t.appendMessage(
+                    { role: 'assistant', content: streamedReply, collapsed: false, id: assistantMessageId },
                     true
                   );
                 }
-                thread.setLoading(false);
-                
-                // 只有在活跃线程且消息完成时才调用回调，确保每轮对话最多调用一次
-                if (thread.isActive && thread.onMessageComplete && streamedReply.trim()) {
-                  thread.onMessageComplete(streamedReply, finalCharCount);
+                t.setLoading(false);
+
+                const finalCharCount = streamedReply.length;
+                if (t.isActive && t.onMessageComplete && streamedReply.trim()) {
+                  t.onMessageComplete(streamedReply, finalCharCount);
                 }
               }
             },
             (error) => {
-              const thread = this.threads.get(conversationId);
-              if (!thread || thread.abortController.signal.aborted) return;
-              if (thread.isActive) {
-                thread.appendMessage(
-                  { role: 'assistant', content: '⚠️ 出现错误: ' + ((error as any)?.message || error), collapsed: false }
-                );
-              }
-              thread.setLoading(false);
+              const t = this.threads.get(conversationId);
+              if (!t || t.abortController.signal.aborted) return;
+              t.isActive && t.appendMessage(
+                { role: 'assistant', content: '⚠️ 出现错误: ' + ((error as any)?.message || error), collapsed: false },
+                true
+              );
+              t.setLoading(false);
             }
           );
         } catch (e) {
-          const thread = this.threads.get(conversationId);
-          if (!thread || thread.abortController.signal.aborted) return;
-          if (thread.isActive) {
-            thread.appendMessage(
-              { role: 'assistant', content: '⚠️ 出现错误: ' + ((e as any)?.message || e), collapsed: false }
-            );
-          }
-          thread.setLoading(false);
+          const t = this.threads.get(conversationId);
+          if (!t || t.abortController.signal.aborted) return;
+          t.isActive && t.appendMessage(
+            { role: 'assistant', content: '⚠️ 出现错误: ' + ((e as any)?.message || e), collapsed: false }
+          );
+          t.setLoading(false);
         }
       };
 
@@ -234,20 +209,14 @@ class ConversationThreadManager {
     };
   }
 
-  // 清理所有线程
   cleanup() {
-    this.threads.forEach((thread, conversationId) => {
-      this.stopThread(conversationId);
-    });
+    this.threads.forEach((_, id) => this.stopThread(id));
   }
 }
 
-// 全局单例
 const threadManager = new ConversationThreadManager();
 
-/**
- * 通用递归流式对话工具（可用于hook和非hook场景）
- */
+// 对外API
 export function createChatStream(
   conversationId: string,
   model: string,
@@ -263,17 +232,12 @@ export function createChatStream(
     getDocumentIds,
     onMessageComplete
   );
-
   const send = async (input: string) => {
     await thread.send(input, model);
   };
-
   return { send };
 }
 
-/**
- * React hook 封装
- */
 export default function useChatStream(
   conversationId: string,
   model: string,
@@ -284,7 +248,6 @@ export default function useChatStream(
   const [loading, setLoading] = useState(false);
   const threadRef = useRef<ReturnType<typeof threadManager.createThread> | null>(null);
 
-  // 当会话ID变化时，创建新线程并设为活跃
   const initializeThread = useCallback(() => {
     if (conversationId) {
       threadRef.current = threadManager.createThread(
@@ -298,24 +261,17 @@ export default function useChatStream(
     }
   }, [conversationId, appendMessage, getDocumentIds, onMessageComplete]);
 
-  // 设置当前会话为活跃状态
   const setActiveConversation = useCallback(() => {
     if (conversationId) {
       threadManager.setActiveThread(conversationId);
     }
   }, [conversationId]);
 
-  // 发送消息
   const send = useCallback(async (input: string) => {
-    if (!threadRef.current) {
-      initializeThread();
-    }
-    if (threadRef.current) {
-      await threadRef.current.send(input, model);
-    }
+    if (!threadRef.current) initializeThread();
+    if (threadRef.current) await threadRef.current.send(input, model);
   }, [model, initializeThread]);
 
-  // 停止当前线程
   const stopThread = useCallback(() => {
     if (conversationId) {
       threadManager.stopThread(conversationId);
@@ -323,15 +279,11 @@ export default function useChatStream(
     }
   }, [conversationId]);
 
-  // 初始化线程
   React.useEffect(() => {
     initializeThread();
-    return () => {
-      // 组件卸载时不停止线程，让它在后台继续运行
-    };
+    return () => {};
   }, [initializeThread]);
 
-  // 当切换到此会话时，设为活跃状态
   React.useEffect(() => {
     setActiveConversation();
   }, [setActiveConversation]);
@@ -345,5 +297,4 @@ export default function useChatStream(
   };
 }
 
-// 导出线程管理器供其他组件使用
 export { threadManager };

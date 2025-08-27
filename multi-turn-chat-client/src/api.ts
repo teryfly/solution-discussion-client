@@ -190,8 +190,8 @@ export async function sendMessageStream(
   conversationId: string,
   content: string,
   model: string,
-  documentIds: number[] = [], // 恢复原有的文档ID数组参数
-  knowledgeContent: string = '', // 新增：知识库内容，将拼接到system prompt
+  documentIds: number[] = [],
+  knowledgeContent: string = '',
   onChunk: (text: string, metadata?: { user_message_id?: number; assistant_message_id?: number; conversation_id?: string; session_id?: string }) => void,
   onDone: () => void,
   onError: (err: any) => void
@@ -203,16 +203,15 @@ export async function sendMessageStream(
       model,
       stream: true,
     };
-
-    // 如果有文档引用，添加到请求体中
     if (documentIds.length > 0) {
       requestBody.documents = documentIds;
     }
-
-    // 如果有知识库内容，添加到system_prompt_append字段
     if (knowledgeContent.trim()) {
       requestBody.system_prompt_append = knowledgeContent;
     }
+
+    // 发送“思考中...”动画占位，立即通知前端渲染
+    onChunk('<span class="waiting-typing">思考中...</span>');
 
     const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
       method: 'POST',
@@ -307,7 +306,6 @@ export async function updateConversationModel(id: string, model: string): Promis
   }
 }
 
-// 计划分类API
 export async function getPlanCategories(): Promise<{ id: number; name: string }[]> {
   const cache = localStorage.getItem('plan_categories');
   let categories: { id: number; name: string }[] = [];
@@ -332,7 +330,6 @@ export async function getPlanCategories(): Promise<{ id: number; name: string }[
   return cleanData;
 }
 
-// 新建计划文档 - 增强版，支持完整参数
 export async function createPlanDocument({
   project_id,
   filename,
@@ -382,7 +379,6 @@ export async function getCompleteSourceCode(projectId: number): Promise<string> 
   return data.completeSourceCode || '';
 }
 
-// 写入源码API
 export async function writeSourceCode(
   rootDir: string,
   filesContent: string,
@@ -439,9 +435,6 @@ export async function writeSourceCode(
   }
 }
 
-// ==================== 知识库引用相关API ====================
-
-// 查询会话引用的文档
 export async function getConversationReferencedDocuments(conversationId: string): Promise<{
   conversation_id: string;
   project_references: any[];
@@ -457,7 +450,6 @@ export async function getConversationReferencedDocuments(conversationId: string)
   return await res.json();
 }
 
-// 获取可引用的知识库文档列表 - 修改为按ID倒序排序
 export async function getKnowledgeDocuments(projectId: number): Promise<any[]> {
   const res = await fetch(`${BASE_URL}/plan/documents/history?project_id=${projectId}&category_id=5`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -467,11 +459,9 @@ export async function getKnowledgeDocuments(projectId: number): Promise<any[]> {
     throw new Error(err?.message || `获取知识库文档失败: ${res.status}`);
   }
   const data = await res.json();
-  // 按ID倒序排序
   return (data || []).sort((a: any, b: any) => b.id - a.id);
 }
 
-// 查询项目级引用
 export async function getProjectDocumentReferences(projectId: number): Promise<any[]> {
   const res = await fetch(`${BASE_URL}/projects/${projectId}/document-references`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -483,7 +473,6 @@ export async function getProjectDocumentReferences(projectId: number): Promise<a
   return await res.json();
 }
 
-// 设置项目级引用
 export async function setProjectDocumentReferences(projectId: number, documentIds: number[]): Promise<any> {
   const res = await fetch(`${BASE_URL}/projects/${projectId}/document-references`, {
     method: 'POST',
@@ -500,7 +489,6 @@ export async function setProjectDocumentReferences(projectId: number, documentId
   return await res.json();
 }
 
-// 清空项目级引用
 export async function clearProjectDocumentReferences(projectId: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/projects/${projectId}/document-references`, {
     method: 'DELETE',
@@ -512,7 +500,6 @@ export async function clearProjectDocumentReferences(projectId: number): Promise
   }
 }
 
-// 查询会话级引用
 export async function getConversationDocumentReferences(conversationId: string): Promise<any[]> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/document-references`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -524,7 +511,6 @@ export async function getConversationDocumentReferences(conversationId: string):
   return await res.json();
 }
 
-// 设置会话级引用
 export async function setConversationDocumentReferences(conversationId: string, documentIds: number[]): Promise<any> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/document-references`, {
     method: 'POST',
@@ -541,7 +527,6 @@ export async function setConversationDocumentReferences(conversationId: string, 
   return await res.json();
 }
 
-// 清空会话级引用
 export async function clearConversationDocumentReferences(conversationId: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/document-references`, {
     method: 'DELETE',
@@ -553,7 +538,6 @@ export async function clearConversationDocumentReferences(conversationId: string
   }
 }
 
-// 查看文档详情
 export async function getDocumentDetail(documentId: number): Promise<any> {
   const res = await fetch(`${BASE_URL}/plan/documents/${documentId}`, {
     headers: { Authorization: `Bearer ${API_KEY}` },
@@ -565,7 +549,6 @@ export async function getDocumentDetail(documentId: number): Promise<any> {
   return await res.json();
 }
 
-// 编辑文档内容
 export async function updateDocument(documentId: number, data: {
   filename?: string;
   content?: string;
@@ -586,7 +569,6 @@ export async function updateDocument(documentId: number, data: {
   return await res.json();
 }
 
-// 删除单个文档引用
 export async function removeProjectDocumentReference(projectId: number, documentId: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/projects/${projectId}/document-references/${documentId}`, {
     method: 'DELETE',
@@ -598,7 +580,6 @@ export async function removeProjectDocumentReference(projectId: number, document
   }
 }
 
-// 删除单个会话级文档引用
 export async function removeConversationDocumentReference(conversationId: string, documentId: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/document-references/${documentId}`, {
     method: 'DELETE',
@@ -610,7 +591,6 @@ export async function removeConversationDocumentReference(conversationId: string
   }
 }
 
-// 获取引用文档的完整内容，用于拼接到system prompt
 export async function getReferencedDocumentsContent(conversationId: string): Promise<string> {
   try {
     const data = await getConversationReferencedDocuments(conversationId);
@@ -641,9 +621,8 @@ export async function getReferencedDocumentsContent(conversationId: string): Pro
       return '';
     }
 
-    // 格式化知识库内容，用于拼接到system prompt
     const knowledgeContent = validDocuments
-      .map(doc => `## ${doc.filename}\n\n${doc.content}`)
+      .map(doc => `## ${doc!.filename}\n\n${doc!.content}`)
       .join('\n\n---\n\n');
     
     return `\n\n=== 知识库引用文档 ===\n\n${knowledgeContent}\n\n=== 知识库引用文档结束 ===\n\n请参考以上知识库文档来回答用户的问题。`;
