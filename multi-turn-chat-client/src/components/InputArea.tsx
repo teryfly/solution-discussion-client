@@ -44,20 +44,7 @@ const InputArea: React.FC<InputAreaProps> = ({
             fontSize: '12px',
             color: '#666'
           }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={autoUpdateCode}
-                onChange={(e) => onAutoUpdateCodeChange(e.target.checked)}
-                style={{ margin: 0 }}
-              />
-              <span>自动更新代码</span>
-            </label>
+            
           </div>
         </div>
       )}

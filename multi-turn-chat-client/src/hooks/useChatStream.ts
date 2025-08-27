@@ -13,7 +13,6 @@ class ConversationThreadManager {
     setLoading: (loading: boolean) => void;
     getDocumentIds?: () => number[];
     onMessageComplete?: (content: string, charCount: number) => void;
-    onCharacterUpdate?: (charCount: number) => void;
   }>();
 
   // 创建或获取线程
@@ -22,8 +21,7 @@ class ConversationThreadManager {
     appendMessage: (msg: Message, replaceLast?: boolean) => void,
     setLoading: (loading: boolean) => void,
     getDocumentIds?: () => number[],
-    onMessageComplete?: (content: string, charCount: number) => void,
-    onCharacterUpdate?: (charCount: number) => void
+    onMessageComplete?: (content: string, charCount: number) => void
   ) {
     // 如果线程已存在，先停止它
     if (this.threads.has(conversationId)) {
@@ -37,8 +35,7 @@ class ConversationThreadManager {
       appendMessage,
       setLoading,
       getDocumentIds,
-      onMessageComplete,
-      onCharacterUpdate
+      onMessageComplete
     });
 
     return {
@@ -98,7 +95,6 @@ class ConversationThreadManager {
 
         let streamedReply = '';
         let isFirstChunk = true;
-        let totalCharCount = 0; // 累计字符数
 
         // 获取文档ID
         const documentIds = currentThread.getDocumentIds ? currentThread.getDocumentIds() : [];
@@ -142,9 +138,8 @@ class ConversationThreadManager {
               // 处理内容chunk
               if (chunk) {
                 streamedReply += chunk;
-                totalCharCount = streamedReply.length; // 修复：直接计算总长度而不是累加chunk长度
                 
-                // 只有活跃线程才显示实时消息和字符计数
+                // 只有活跃线程才显示实时消息
                 if (thread.isActive) {
                   thread.appendMessage(
                     { 
@@ -155,11 +150,6 @@ class ConversationThreadManager {
                     },
                     true
                   );
-                  
-                  // 调用字符计数回调
-                  if (thread.onCharacterUpdate) {
-                    thread.onCharacterUpdate(totalCharCount);
-                  }
                 }
               }
             },
@@ -186,7 +176,7 @@ class ConversationThreadManager {
                 await sendOne(continueMessage);
               } else {
                 // 流式真正完成时的处理
-                const finalCharCount = streamedReply.length; // 使用最终内容的长度
+                const finalCharCount = streamedReply.length;
                 
                 if (thread.isActive) {
                   thread.appendMessage(
@@ -254,16 +244,14 @@ export function createChatStream(
   appendMessage: (msg: Message, replaceLast?: boolean) => void,
   setLoading?: (v: boolean) => void,
   getDocumentIds?: () => number[],
-  onMessageComplete?: (content: string, charCount: number) => void,
-  onCharacterUpdate?: (charCount: number) => void
+  onMessageComplete?: (content: string, charCount: number) => void
 ) {
   const thread = threadManager.createThread(
     conversationId, 
     appendMessage, 
     setLoading || (() => {}),
     getDocumentIds,
-    onMessageComplete,
-    onCharacterUpdate
+    onMessageComplete
   );
 
   const send = async (input: string) => {
@@ -281,8 +269,7 @@ export default function useChatStream(
   model: string,
   appendMessage: (msg: Message, replaceLast?: boolean) => void,
   getDocumentIds?: () => number[],
-  onMessageComplete?: (content: string, charCount: number) => void,
-  onCharacterUpdate?: (charCount: number) => void
+  onMessageComplete?: (content: string, charCount: number) => void
 ) {
   const [loading, setLoading] = useState(false);
   const threadRef = useRef<ReturnType<typeof threadManager.createThread> | null>(null);
@@ -295,12 +282,11 @@ export default function useChatStream(
         appendMessage, 
         setLoading, 
         getDocumentIds,
-        onMessageComplete,
-        onCharacterUpdate
+        onMessageComplete
       );
       threadManager.setActiveThread(conversationId);
     }
-  }, [conversationId, appendMessage, getDocumentIds, onMessageComplete, onCharacterUpdate]);
+  }, [conversationId, appendMessage, getDocumentIds, onMessageComplete]);
 
   // 设置当前会话为活跃状态
   const setActiveConversation = useCallback(() => {

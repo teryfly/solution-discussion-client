@@ -130,6 +130,39 @@ const WriteSourceCodeModal: React.FC<WriteSourceCodeModalProps> = ({
       return timestamp;
     }
   };
+
+  // 复制日志功能
+  const handleCopyLogs = async () => {
+    if (logs.length === 0) {
+      alert('暂无日志可复制');
+      return;
+    }
+
+    try {
+      const logText = logs.map(log => {
+        const timestamp = formatTimestamp(log.timestamp);
+        return `[${timestamp}] ${log.type.toUpperCase()}: ${log.message}`;
+      }).join('\n');
+
+      await navigator.clipboard.writeText(logText);
+      
+      // 简单的视觉反馈 - 暂时改变按钮文本
+      const button = document.querySelector('.copy-logs-btn') as HTMLButtonElement;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = '已复制';
+        button.style.background = '#4caf50';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.background = '#f5f5f5';
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('复制日志失败:', error);
+      alert('复制日志失败，请重试');
+    }
+  };
+
   // 键盘快捷键支持
   useEffect(() => {
     if (!visible) return;
@@ -343,7 +376,8 @@ const WriteSourceCodeModal: React.FC<WriteSourceCodeModalProps> = ({
         >
           {!isRunning && logs.length > 0 && (
             <button
-              onClick={resetState}
+              className="copy-logs-btn"
+              onClick={handleCopyLogs}
               style={{
                 padding: '8px 16px',
                 background: '#f5f5f5',
@@ -353,7 +387,7 @@ const WriteSourceCodeModal: React.FC<WriteSourceCodeModalProps> = ({
                 cursor: 'pointer',
               }}
             >
-              清空日志
+              复制日志
             </button>
           )}
           {!isRunning && isCompleted && (

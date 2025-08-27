@@ -54,7 +54,6 @@ function ConversationLayout() {
   const [executionLogs, setExecutionLogs] = useState<LogEntry[]>([]);
   const [autoUpdateCode, setAutoUpdateCode] = useState(false);
   const [lastExecutionSummary, setLastExecutionSummary] = useState<any>(null);
-  const [currentCharCountLogId, setCurrentCharCountLogId] = useState<string | null>(null);
   const [autoUpdateStateAtStart, setAutoUpdateStateAtStart] = useState<boolean | null>(null);
 
   const currentProjectId = currentMeta?.projectId ?? selectedProjectId;
@@ -72,20 +71,10 @@ function ConversationLayout() {
     return logEntry.id;
   }, []);
 
-  // 更新指定日志的辅助函数
-  const updateLog = useCallback((logId: string, message: string, type?: string) => {
-    setExecutionLogs(prev => prev.map(log => 
-      log.id === logId 
-        ? { ...log, message, ...(type && { type }) }
-        : log
-    ));
-  }, []);
-
   // 清空执行日志
   const handleClearExecutionLogs = useCallback(() => {
     setExecutionLogs([]);
     setLastExecutionSummary(null);
-    setCurrentCharCountLogId(null);
     setAutoUpdateStateAtStart(null);
   }, []);
 
@@ -105,34 +94,13 @@ function ConversationLayout() {
         addLog('准确采集代码', 'info');
       }
       
-      // 重置字符计数日志ID
-      setCurrentCharCountLogId(null);
-      
       handleSendMessage();
     }
   }, [input, loading, autoUpdateCode, handleSendMessage, addLog]);
 
-  // 处理字符计数更新 - 修复：确保只更新同一行
-  const handleCharacterUpdate = useCallback((charCount: number) => {
-    if (currentCharCountLogId) {
-      // 更新现有的字符计数日志
-      updateLog(currentCharCountLogId, `正在接收第${charCount}个字符`);
-    } else {
-      // 第一次创建字符计数日志
-      const logId = addLog(`正在接收第${charCount}个字符`, 'info');
-      setCurrentCharCountLogId(logId);
-    }
-  }, [currentCharCountLogId, updateLog, addLog]);
-
   // 处理消息完成
   const handleMessageComplete = useCallback(async (content: string, finalCharCount: number) => {
-    // 3. 接收完成，更新字符计数（更新同一行）
-    if (currentCharCountLogId) {
-      updateLog(currentCharCountLogId, `共接收${finalCharCount}个字符。`, 'info');
-      setCurrentCharCountLogId(null);
-    }
-
-    // 4. 修正状态判断逻辑：只有从勾选变为不勾选才算取消
+    // 修正状态判断逻辑：只有从勾选变为不勾选才算取消
     console.log('状态检查:', {
       autoUpdateStateAtStart,
       currentAutoUpdateCode: autoUpdateCode,
@@ -189,7 +157,7 @@ function ConversationLayout() {
       console.error('自动更新代码失败:', e);
       addLog(`自动更新代码失败: ${e?.message || e}`, 'error', e?.message || e);
     }
-  }, [autoUpdateCode, autoUpdateStateAtStart, currentMeta?.projectId, currentCharCountLogId, updateLog, addLog]);
+  }, [autoUpdateCode, autoUpdateStateAtStart, currentMeta?.projectId, addLog]);
 
   // 监听来自useChatStream的事件
   useEffect(() => {
@@ -198,26 +166,12 @@ function ConversationLayout() {
       handleMessageComplete(content, charCount);
     };
 
-    const handleCharacterUpdateEvent = (event: CustomEvent) => {
-      const charCount = event.detail;
-      handleCharacterUpdate(charCount);
-    };
-
-    // 监听消息开始事件，重置字符计数日志ID
-    const handleMessageStartEvent = () => {
-      setCurrentCharCountLogId(null);
-    };
-
     window.addEventListener('message-complete', handleMessageCompleteEvent as EventListener);
-    window.addEventListener('character-update', handleCharacterUpdateEvent as EventListener);
-    window.addEventListener('message-start', handleMessageStartEvent as EventListener);
 
     return () => {
       window.removeEventListener('message-complete', handleMessageCompleteEvent as EventListener);
-      window.removeEventListener('character-update', handleCharacterUpdateEvent as EventListener);
-      window.removeEventListener('message-start', handleMessageStartEvent as EventListener);
     };
-  }, [handleMessageComplete, handleCharacterUpdate]);
+  }, [handleMessageComplete]);
 
   return (
     <ProjectProvider projects={projects as any} currentProjectId={currentProjectId}>
@@ -287,6 +241,8 @@ function ConversationLayout() {
           executionLogs={executionLogs}
           onClearLogs={handleClearExecutionLogs}
           lastExecutionSummary={lastExecutionSummary}
+          autoUpdateCode={autoUpdateCode}
+          onAutoUpdateCodeChange={handleAutoUpdateCodeChange}
         />
       </div>
     </ProjectProvider>

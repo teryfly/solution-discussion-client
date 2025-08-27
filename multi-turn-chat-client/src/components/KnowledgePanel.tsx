@@ -10,6 +10,7 @@ import {
 import ProjectReferenceModal from './ProjectReferenceModal';
 import ConversationReferenceModal from './ConversationReferenceModal';
 import DocumentDetailModal from './DocumentDetailModal';
+
 interface LogEntry {
   id: string;
   message: string;
@@ -17,6 +18,7 @@ interface LogEntry {
   timestamp: string;
   data?: any;
 }
+
 interface KnowledgePanelProps {
   conversationId: string;
   currentMeta?: ConversationMeta;
@@ -24,7 +26,10 @@ interface KnowledgePanelProps {
   executionLogs: LogEntry[];
   onClearLogs?: () => void;
   lastExecutionSummary?: any;
+  autoUpdateCode: boolean;
+  onAutoUpdateCodeChange: (checked: boolean) => void;
 }
+
 const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   conversationId,
   currentMeta,
@@ -32,6 +37,8 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   executionLogs,
   onClearLogs,
   lastExecutionSummary,
+  autoUpdateCode,
+  onAutoUpdateCodeChange,
 }) => {
   const [projectReferences, setProjectReferences] = useState<DocumentReference[]>([]);
   const [conversationReferences, setConversationReferences] = useState<DocumentReference[]>([]);
@@ -43,12 +50,14 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   const [showDocumentDetailModal, setShowDocumentDetailModal] = useState(false);
   const logContainerRef = useRef<HTMLDivElement>(null);
   const knowledgeAreaRef = useRef<HTMLDivElement>(null);
+
   // 自动滚动到日志底部
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [executionLogs]);
+
   // 加载引用文档
   const loadReferencedDocuments = async () => {
     if (!conversationId) {
@@ -56,6 +65,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       setConversationReferences([]);
       return;
     }
+
     setLoading(true);
     try {
       const data = await getConversationReferencedDocuments(conversationId);
@@ -63,6 +73,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       const sortedProjectRefs = (data.project_references || []).sort((a, b) => b.document_id - a.document_id);
       // 按ID倒序排序会话级引用
       const sortedConversationRefs = (data.conversation_references || []).sort((a, b) => b.document_id - a.document_id);
+      
       setProjectReferences(sortedProjectRefs);
       setConversationReferences(sortedConversationRefs);
     } catch (error) {
@@ -73,19 +84,24 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       setLoading(false);
     }
   };
+
   useEffect(() => {
     loadReferencedDocuments();
   }, [conversationId]);
+
   // 打开文档详情弹窗
   const handleDocumentClick = (doc: DocumentReference) => {
     setSelectedDocument(doc);
     setShowDocumentDetailModal(true);
   };
+
   // 处理文档ID变更（编辑后创建新版本）
   const handleDocumentChange = async (newDocumentId: number) => {
     if (!selectedDocument) return;
+
     try {
       const oldDocumentId = selectedDocument.document_id;
+      
       // 根据文档类型更新引用关系
       if (projectReferences.some(ref => ref.document_id === oldDocumentId)) {
         // 项目级引用
@@ -104,6 +120,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         const newRefIds = currentRefIds.map(id => id === oldDocumentId ? newDocumentId : id);
         await setConversationDocumentReferences(conversationId, newRefIds);
       }
+
       // 重新加载引用文档
       await loadReferencedDocuments();
       onRefresh?.();
@@ -112,6 +129,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       alert('更新文档引用关系失败: ' + (error as any)?.message);
     }
   };
+
   // 快捷删除引用 - 使用正确的逻辑
   const handleQuickRemove = async (doc: DocumentReference, type: 'project' | 'conversation', e: React.MouseEvent) => {
     e.stopPropagation();
@@ -140,10 +158,12 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       console.error('删除引用失败:', error);
     }
   };
+
   const handleRefreshReferences = () => {
     loadReferencedDocuments();
     onRefresh?.();
   };
+
   // 获取日志类型对应的样式
   const getLogTypeStyle = (type: string) => {
     switch (type) {
@@ -157,6 +177,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         return { color: '#666' };
     }
   };
+
   // 格式化时间戳
   const formatTimestamp = (timestamp: string) => {
     try {
@@ -165,6 +186,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       return timestamp;
     }
   };
+
   // 精简执行摘要显示：成功X, 失败Y, 无效Z
   const formatExecutionSummary = (summary: any) => {
     if (!summary) return '';
@@ -173,6 +195,53 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     const invalid = Number(summary.invalid_tasks ?? 0);
     return `成功${successful}, 失败${failed}, 无效${invalid}`;
   };
+
+  // 处理日志显示内容，确保error和warning类型与WriteSourceCodeModal一致
+  const getLogDisplayContent = (log: LogEntry) => {
+    if (log.type === 'summary' && typeof log.data === 'object' && log.data) {
+      return formatExecutionSummary(log.data);
+    }
+    
+    // 对于error和warning类型，直接显示message，与WriteSourceCodeModal保持一致
+    if (log.type === 'error' || log.type === 'warning') {
+      return log.message;
+    }
+    
+    return typeof log.data === 'object' ? JSON.stringify(log.data, null, 2) : log.data || log.message;
+  };
+
+  // 复制日志功能
+  const handleCopyLogs = async () => {
+    if (executionLogs.length === 0) {
+      alert('暂无日志可复制');
+      return;
+    }
+
+    try {
+      const logText = executionLogs.map(log => {
+        const timestamp = formatTimestamp(log.timestamp);
+        const content = getLogDisplayContent(log);
+        return `[${timestamp}] ${log.type.toUpperCase()}: ${content}`;
+      }).join('\n');
+
+      await navigator.clipboard.writeText(logText);
+      // 简单的视觉反馈 - 暂时改变按钮文本
+      const button = document.querySelector('.execution-logs-copy-btn') as HTMLButtonElement;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = '已复制';
+        button.style.background = '#4caf50';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.background = '';
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('复制日志失败:', error);
+      alert('复制日志失败，请重试');
+    }
+  };
+
   if (!conversationId) {
     return (
       <div style={{ 
@@ -191,6 +260,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       </div>
     );
   }
+
   return (
     <div style={{ 
       width: '200px', 
@@ -220,11 +290,13 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         }}>
           知识库
         </h4>
+
         {loading && (
           <div style={{ color: '#888', fontSize: '12px', textAlign: 'center' }}>
             加载中...
           </div>
         )}
+
         {!loading && (
           <>
             {/* 项目级引用 */}
@@ -246,6 +318,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                 <span>项目级引用</span>
                 <span style={{ fontSize: '10px' }}>✏️</span>
               </div>
+              
               {projectReferences.length === 0 ? (
                 <div style={{ 
                   fontSize: '11px', 
@@ -327,6 +400,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                 </div>
               )}
             </div>
+
             {/* 会话级引用 */}
             <div>
               <div 
@@ -346,6 +420,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                 <span>会话级引用</span>
                 <span style={{ fontSize: '10px' }}>✏️</span>
               </div>
+              
               {conversationReferences.length === 0 ? (
                 <div style={{ 
                   fontSize: '11px', 
@@ -430,6 +505,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
           </>
         )}
       </div>
+
       {/* D2: 执行日志区域 - 占用剩余空间，内容滚动 */}
       <div style={{
         flex: 1, // 占用剩余所有空间
@@ -452,41 +528,58 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
             fontWeight: 'bold',
             color: '#333'
           }}>
-            执行日志
+            日志
           </h4>
-          {executionLogs.length > 0 && onClearLogs && (
+          
+          {/* 自动更新代码复选框 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            fontSize: '11px',
+            color: '#666',
+            gap: '4px'
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}>
+              <input
+                type="checkbox"
+                checked={autoUpdateCode}
+                onChange={(e) => onAutoUpdateCodeChange(e.target.checked)}
+                style={{ margin: 0, cursor: 'pointer' }}
+              />
+              <span>自动更新代码</span>
+            </label>
+          </div>
+
+          {executionLogs.length > 0 && (
             <button
-              onClick={onClearLogs}
+              className="execution-logs-copy-btn"
+              onClick={handleCopyLogs}
               style={{
                 background: 'none',
                 border: '1px solid #ddd',
                 borderRadius: '4px',
-                padding: '2px 6px',
-                fontSize: '10px',
+                padding: '2px 4px',
+                fontSize: '12px',
                 cursor: 'pointer',
-                color: '#666'
+                color: '#666',
+                lineHeight: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
-              title="清空日志"
+              title="复制日志"
             >
-              清空
+              📋
             </button>
           )}
         </div>
-        {/* 显示执行摘要 */}
-        {lastExecutionSummary && (
-          <div style={{
-            fontSize: '11px',
-            padding: '4px 6px',
-            marginBottom: '8px',
-            background: '#e8f5e8',
-            borderRadius: '4px',
-            color: '#2e7d32',
-            fontWeight: '500',
-            flexShrink: 0 // 摘要行不收缩
-          }}>
-            {formatExecutionSummary(lastExecutionSummary)}
-          </div>
-        )}
+
         {/* 日志容器 - 可滚动 */}
         <div
           ref={logContainerRef}
@@ -537,13 +630,14 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                   </span>
                 </div>
                 <div style={{ fontSize: '10px', wordBreak: 'break-word' }}>
-                  {typeof log.data === 'object' ? JSON.stringify(log.data, null, 2) : log.data || log.message}
+                  {getLogDisplayContent(log)}
                 </div>
               </div>
             ))
           )}
         </div>
       </div>
+
       {/* 项目级引用编辑弹窗 */}
       {showProjectReferenceModal && currentMeta?.projectId && (
         <ProjectReferenceModal
@@ -553,6 +647,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
           onUpdate={handleRefreshReferences}
         />
       )}
+
       {/* 会话级引用编辑弹窗 */}
       {showConversationReferenceModal && currentMeta?.projectId && (
         <ConversationReferenceModal
@@ -563,6 +658,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
           onUpdate={handleRefreshReferences}
         />
       )}
+
       {/* 文档详情弹窗 */}
       {showDocumentDetailModal && selectedDocument && (
         <DocumentDetailModal
@@ -579,4 +675,5 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     </div>
   );
 };
+
 export default KnowledgePanel;
