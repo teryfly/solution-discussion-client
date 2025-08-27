@@ -1,19 +1,21 @@
-/* “思考中...”等待动画样式 */
+/* "思考中..."等待动画样式 */
 .waiting-typing {
   display: inline-block;
-  color: #888;
+  color: #1a73e8;
   font-style: italic;
   position: relative;
+  font-weight: 500;
 }
+
 .waiting-typing::after {
   content: '';
   display: inline-block;
   width: 1em;
   height: 1em;
   vertical-align: -0.15em;
-  margin-left: 3px;
+  margin-left: 6px;
   border-radius: 50%;
-  border: 2px solid #bbb;
+  border: 2px solid #e3f2fd;
   border-top: 2px solid #1a73e8;
   animation: waiting-spin 1s linear infinite;
 }
@@ -21,4 +23,42 @@
 @keyframes waiting-spin {
   0% { transform: rotate(0deg);}
   100% { transform: rotate(360deg);}
+}
+
+/* 思考动画的容器样式 */
+.thinking-animation {
+  padding: 8px 12px;
+  background: #f0f7ff;
+  border-radius: 8px;
+  border-left: 3px solid #1a73e8;
+  margin: 4px 0;
+}
+
+/* 确保思考动画在消息气泡中正确显示 */
+.chat-msg .waiting-typing {
+  font-size: 14px;
+}
+
+/* 增强思考动画的视觉效果 */
+.waiting-typing {
+  background: linear-gradient(90deg, #1a73e8, #4285f4, #1a73e8);
+  background-size: 200% 100%;
+  animation: thinking-gradient 2s ease-in-out infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes thinking-gradient {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 为不支持背景渐变文字的浏览器提供后备方案 */
+@supports not (-webkit-background-clip: text) {
+  .waiting-typing {
+    color: #1a73e8;
+    background: none;
+    animation: none;
+  }
 }

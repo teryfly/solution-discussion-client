@@ -190,7 +190,8 @@ export async function sendMessageStream(
   conversationId: string,
   content: string,
   model: string,
-  documentIds: number[] = [], // 新增：文档ID数组
+  documentIds: number[] = [], // 恢复原有的文档ID数组参数
+  knowledgeContent: string = '', // 新增：知识库内容，将拼接到system prompt
   onChunk: (text: string, metadata?: { user_message_id?: number; assistant_message_id?: number; conversation_id?: string; session_id?: string }) => void,
   onDone: () => void,
   onError: (err: any) => void
@@ -206,6 +207,11 @@ export async function sendMessageStream(
     // 如果有文档引用，添加到请求体中
     if (documentIds.length > 0) {
       requestBody.documents = documentIds;
+    }
+
+    // 如果有知识库内容，添加到system_prompt_append字段
+    if (knowledgeContent.trim()) {
+      requestBody.system_prompt_append = knowledgeContent;
     }
 
     const res = await fetch(`${BASE_URL}/chat/conversations/${conversationId}/messages`, {
@@ -601,5 +607,49 @@ export async function removeConversationDocumentReference(conversationId: string
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.message || `删除会话引用失败: ${res.status}`);
+  }
+}
+
+// 获取引用文档的完整内容，用于拼接到system prompt
+export async function getReferencedDocumentsContent(conversationId: string): Promise<string> {
+  try {
+    const data = await getConversationReferencedDocuments(conversationId);
+    const allReferences = [...(data.project_references || []), ...(data.conversation_references || [])];
+    
+    if (allReferences.length === 0) {
+      return '';
+    }
+
+    const documentsContent = await Promise.all(
+      allReferences.map(async (ref) => {
+        try {
+          const detail = await getDocumentDetail(ref.document_id);
+          return {
+            filename: detail.filename || `文档${ref.document_id}`,
+            content: detail.content || '',
+          };
+        } catch (error) {
+          console.warn(`获取文档${ref.document_id}内容失败:`, error);
+          return null;
+        }
+      })
+    );
+    
+    const validDocuments = documentsContent.filter(doc => doc && doc.content.trim() !== '');
+    
+    if (validDocuments.length === 0) {
+      return '';
+    }
+
+    // 格式化知识库内容，用于拼接到system prompt
+    const knowledgeContent = validDocuments
+      .map(doc => `## ${doc.filename}\n\n${doc.content}`)
+      .join('\n\n---\n\n');
+    
+    return `\n\n=== 知识库引用文档 ===\n\n${knowledgeContent}\n\n=== 知识库引用文档结束 ===\n\n请参考以上知识库文档来回答用户的问题。`;
+    
+  } catch (error) {
+    console.warn('获取引用文档内容失败:', error);
+    return '';
   }
 }

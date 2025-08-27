@@ -28,6 +28,7 @@ interface KnowledgePanelProps {
   lastExecutionSummary?: any;
   autoUpdateCode: boolean;
   onAutoUpdateCodeChange: (checked: boolean) => void;
+  onDocumentReferencesChange?: () => void; // 新增：文档引用变化回调
 }
 
 const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
@@ -39,6 +40,7 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   lastExecutionSummary,
   autoUpdateCode,
   onAutoUpdateCodeChange,
+  onDocumentReferencesChange,
 }) => {
   const [projectReferences, setProjectReferences] = useState<DocumentReference[]>([]);
   const [conversationReferences, setConversationReferences] = useState<DocumentReference[]>([]);
@@ -124,6 +126,8 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       // 重新加载引用文档
       await loadReferencedDocuments();
       onRefresh?.();
+      // 通知父组件文档引用已变化
+      onDocumentReferencesChange?.();
     } catch (error) {
       console.error('更新文档引用关系失败:', error);
       alert('更新文档引用关系失败: ' + (error as any)?.message);
@@ -152,16 +156,20 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         await setConversationDocumentReferences(conversationId, newRefIds);
       }
       // 重新加载引用文档
-      loadReferencedDocuments();
+      await loadReferencedDocuments();
       onRefresh?.();
+      // 通知父组件文档引用已变化
+      onDocumentReferencesChange?.();
     } catch (error) {
       console.error('删除引用失败:', error);
     }
   };
 
-  const handleRefreshReferences = () => {
-    loadReferencedDocuments();
+  const handleRefreshReferences = async () => {
+    await loadReferencedDocuments();
     onRefresh?.();
+    // 通知父组件文档引用已变化
+    onDocumentReferencesChange?.();
   };
 
   // 获取日志类型对应的样式
@@ -208,38 +216,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     }
     
     return typeof log.data === 'object' ? JSON.stringify(log.data, null, 2) : log.data || log.message;
-  };
-
-  // 复制日志功能
-  const handleCopyLogs = async () => {
-    if (executionLogs.length === 0) {
-      alert('暂无日志可复制');
-      return;
-    }
-
-    try {
-      const logText = executionLogs.map(log => {
-        const timestamp = formatTimestamp(log.timestamp);
-        const content = getLogDisplayContent(log);
-        return `[${timestamp}] ${log.type.toUpperCase()}: ${content}`;
-      }).join('\n');
-
-      await navigator.clipboard.writeText(logText);
-      // 简单的视觉反馈 - 暂时改变按钮文本
-      const button = document.querySelector('.execution-logs-copy-btn') as HTMLButtonElement;
-      if (button) {
-        const originalText = button.textContent;
-        button.textContent = '已复制';
-        button.style.background = '#4caf50';
-        setTimeout(() => {
-          button.textContent = originalText;
-          button.style.background = '';
-        }, 1000);
-      }
-    } catch (error) {
-      console.error('复制日志失败:', error);
-      alert('复制日志失败，请重试');
-    }
   };
 
   if (!conversationId) {
@@ -558,8 +534,8 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
 
           {executionLogs.length > 0 && (
             <button
-              className="execution-logs-copy-btn"
-              onClick={handleCopyLogs}
+              className="execution-logs-clear-btn"
+              onClick={onClearLogs}
               style={{
                 background: 'none',
                 border: '1px solid #ddd',
@@ -573,9 +549,9 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
-              title="复制日志"
+              title="清空日志"
             >
-              📋
+              ×
             </button>
           )}
         </div>

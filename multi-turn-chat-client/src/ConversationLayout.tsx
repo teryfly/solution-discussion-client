@@ -49,6 +49,8 @@ function ConversationLayout() {
     handleSendMessage,
     setMessages,
     refreshProjects,
+    // 新增：文档引用相关
+    loadDocumentReferences,
   } = useConversationLayout();
 
   const [executionLogs, setExecutionLogs] = useState<LogEntry[]>([]);
@@ -82,6 +84,13 @@ function ConversationLayout() {
   const handleAutoUpdateCodeChange = useCallback((checked: boolean) => {
     setAutoUpdateCode(checked);
   }, []);
+
+  // 处理文档引用变化 - 重新加载文档引用
+  const handleDocumentReferencesChange = useCallback(() => {
+    if (loadDocumentReferences) {
+      loadDocumentReferences();
+    }
+  }, [loadDocumentReferences]);
 
   // 监听用户发送消息
   const handleUserSendMessage = useCallback(() => {
@@ -243,6 +252,7 @@ function ConversationLayout() {
           lastExecutionSummary={lastExecutionSummary}
           autoUpdateCode={autoUpdateCode}
           onAutoUpdateCodeChange={handleAutoUpdateCodeChange}
+          onDocumentReferencesChange={handleDocumentReferencesChange}
         />
       </div>
     </ProjectProvider>

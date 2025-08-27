@@ -1,6 +1,6 @@
 // useChatStream.ts
 import React, { useState, useRef, useCallback } from 'react';
-import { sendMessageStream } from '../api';
+import { sendMessageStream, getConversationReferencedDocuments, getReferencedDocumentsContent } from '../api';
 import { Message } from '../types';
 import { shouldAutoContinue } from '../utils/autoContinue';
 
@@ -96,23 +96,33 @@ class ConversationThreadManager {
         let streamedReply = '';
         let isFirstChunk = true;
 
-        // 获取文档ID
-        const documentIds = currentThread.getDocumentIds ? currentThread.getDocumentIds() : [];
-
-        // 只有活跃线程才显示用户消息和等待动画
+        // 只有活跃线程才显示用户消息和思考动画
         if (currentThread.isActive) {
           currentThread.appendMessage({ role: 'user', content: prompt, collapsed: false });
+          // 显示思考动画
           currentThread.appendMessage(
             { role: 'assistant', content: '', collapsed: false }
           );
         }
 
         try {
+          // 动态获取文档ID（保持原有逻辑）
+          const documentIds = currentThread.getDocumentIds ? currentThread.getDocumentIds() : [];
+          
+          // 动态获取知识库内容，用于拼接到system prompt
+          let knowledgeContent = '';
+          try {
+            knowledgeContent = await getReferencedDocumentsContent(conversationId);
+          } catch (error) {
+            console.warn('获取知识库内容失败:', error);
+          }
+
           await sendMessageStream(
             conversationId,
             prompt,
             model,
-            documentIds,
+            documentIds, // 传递文档ID（保持原有逻辑）
+            knowledgeContent, // 传递知识库内容，将拼接到system prompt
             (chunk, metadata) => {
               const thread = this.threads.get(conversationId);
               if (!thread || thread.abortController.signal.aborted) return;

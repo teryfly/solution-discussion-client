@@ -92,22 +92,12 @@ export function useConversationLayout() {
     window.dispatchEvent(event);
   };
 
-  // 创建字符计数更新处理函数
-  const handleCharacterUpdateForDisplay = (charCount: number) => {
-    // 通过自定义事件传递给ConversationLayout
-    const event = new CustomEvent('character-update', { 
-      detail: charCount 
-    });
-    window.dispatchEvent(event);
-  };
-
-  const { send, loading, setActiveConversation, stopStream } = useChatStream(
+  const { send, loading, setActiveConversation, stopThread } = useChatStream(
     conversationId,
     model,
     appendMessage,
     getDocumentIds,
-    handleMessageCompleteForAutoUpdate,
-    handleCharacterUpdateForDisplay
+    handleMessageCompleteForAutoUpdate
   );
 
   // 设置活跃会话
@@ -184,5 +174,6 @@ export function useConversationLayout() {
     handleSendMessage,
     setMessages,
     refreshProjects,
+    loadDocumentReferences, // 用于知识库面板的引用变化回调
   };
 }
