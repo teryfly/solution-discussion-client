@@ -12,6 +12,8 @@ class ConversationThreadManager {
     appendMessage: (msg: Message, replaceLast?: boolean) => void;
     setLoading: (loading: boolean) => void;
     getDocumentIds?: () => number[];
+    onMessageComplete?: (content: string, charCount: number) => void;
+    onCharacterUpdate?: (charCount: number) => void;
   }>();
 
   // 创建或获取线程
@@ -19,7 +21,9 @@ class ConversationThreadManager {
     conversationId: string, 
     appendMessage: (msg: Message, replaceLast?: boolean) => void,
     setLoading: (loading: boolean) => void,
-    getDocumentIds?: () => number[]
+    getDocumentIds?: () => number[],
+    onMessageComplete?: (content: string, charCount: number) => void,
+    onCharacterUpdate?: (charCount: number) => void
   ) {
     // 如果线程已存在，先停止它
     if (this.threads.has(conversationId)) {
@@ -32,7 +36,9 @@ class ConversationThreadManager {
       abortController,
       appendMessage,
       setLoading,
-      getDocumentIds
+      getDocumentIds,
+      onMessageComplete,
+      onCharacterUpdate
     });
 
     return {
@@ -92,6 +98,7 @@ class ConversationThreadManager {
 
         let streamedReply = '';
         let isFirstChunk = true;
+        let totalCharCount = 0; // 累计字符数
 
         // 获取文档ID
         const documentIds = currentThread.getDocumentIds ? currentThread.getDocumentIds() : [];
@@ -135,7 +142,9 @@ class ConversationThreadManager {
               // 处理内容chunk
               if (chunk) {
                 streamedReply += chunk;
-                // 只有活跃线程才显示实时消息
+                totalCharCount = streamedReply.length; // 修复：直接计算总长度而不是累加chunk长度
+                
+                // 只有活跃线程才显示实时消息和字符计数
                 if (thread.isActive) {
                   thread.appendMessage(
                     { 
@@ -146,6 +155,11 @@ class ConversationThreadManager {
                     },
                     true
                   );
+                  
+                  // 调用字符计数回调
+                  if (thread.onCharacterUpdate) {
+                    thread.onCharacterUpdate(totalCharCount);
+                  }
                 }
               }
             },
@@ -171,6 +185,9 @@ class ConversationThreadManager {
                 }
                 await sendOne(continueMessage);
               } else {
+                // 流式真正完成时的处理
+                const finalCharCount = streamedReply.length; // 使用最终内容的长度
+                
                 if (thread.isActive) {
                   thread.appendMessage(
                     { 
@@ -183,7 +200,11 @@ class ConversationThreadManager {
                   );
                 }
                 thread.setLoading(false);
-                // 消息完成后不删除线程，保持线程状态
+                
+                // 只有在活跃线程且消息完成时才调用回调，确保每轮对话最多调用一次
+                if (thread.isActive && thread.onMessageComplete && streamedReply.trim()) {
+                  thread.onMessageComplete(streamedReply, finalCharCount);
+                }
               }
             },
             (error) => {
@@ -206,7 +227,8 @@ class ConversationThreadManager {
             );
           }
           thread.setLoading(false);
-        }      };
+        }
+      };
 
       await sendOne(input);
     };
@@ -231,13 +253,17 @@ export function createChatStream(
   model: string,
   appendMessage: (msg: Message, replaceLast?: boolean) => void,
   setLoading?: (v: boolean) => void,
-  getDocumentIds?: () => number[]
+  getDocumentIds?: () => number[],
+  onMessageComplete?: (content: string, charCount: number) => void,
+  onCharacterUpdate?: (charCount: number) => void
 ) {
   const thread = threadManager.createThread(
     conversationId, 
     appendMessage, 
     setLoading || (() => {}),
-    getDocumentIds
+    getDocumentIds,
+    onMessageComplete,
+    onCharacterUpdate
   );
 
   const send = async (input: string) => {
@@ -254,7 +280,9 @@ export default function useChatStream(
   conversationId: string,
   model: string,
   appendMessage: (msg: Message, replaceLast?: boolean) => void,
-  getDocumentIds?: () => number[]
+  getDocumentIds?: () => number[],
+  onMessageComplete?: (content: string, charCount: number) => void,
+  onCharacterUpdate?: (charCount: number) => void
 ) {
   const [loading, setLoading] = useState(false);
   const threadRef = useRef<ReturnType<typeof threadManager.createThread> | null>(null);
@@ -262,10 +290,17 @@ export default function useChatStream(
   // 当会话ID变化时，创建新线程并设为活跃
   const initializeThread = useCallback(() => {
     if (conversationId) {
-      threadRef.current = threadManager.createThread(conversationId, appendMessage, setLoading, getDocumentIds);
+      threadRef.current = threadManager.createThread(
+        conversationId, 
+        appendMessage, 
+        setLoading, 
+        getDocumentIds,
+        onMessageComplete,
+        onCharacterUpdate
+      );
       threadManager.setActiveThread(conversationId);
     }
-  }, [conversationId, appendMessage, getDocumentIds]);
+  }, [conversationId, appendMessage, getDocumentIds, onMessageComplete, onCharacterUpdate]);
 
   // 设置当前会话为活跃状态
   const setActiveConversation = useCallback(() => {

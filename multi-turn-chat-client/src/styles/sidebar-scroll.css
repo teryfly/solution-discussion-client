@@ -34,34 +34,38 @@
   flex-shrink: 0;
 }
 
-/* 知识库面板样式 - 更新为支持分割布局 */
+/* 知识库面板样式 - 优化为弹性布局，固定高度 */
 .knowledge-panel {
-  width: 120px;
+  width: 200px;
   border-right: 1px solid #ccc;
   background: #f9f9fc;
-  height: 100vh;
-  min-height: 0;
+  height: 100vh; /* 固定高度为屏幕高度 */
+  min-height: 100vh;
+  max-height: 100vh;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  overflow: hidden; /* 防止整体滚动 */
 }
 
-/* 知识库引用区域滚动 */
+/* 知识库引用区域 - 高度自适应，但有最大高度限制 */
 .knowledge-panel > div:first-child {
-  flex: 0 0 50%;
-  overflow-y: auto;
   padding: 10px;
+  overflow-y: auto; /* 内容过多时滚动 */
   border-bottom: 1px solid #ddd;
+  flex-shrink: 0; /* 不被压缩 */
+  max-height: 60vh; /* 最大高度限制，避免占用太多空间 */
 }
 
-/* 执行日志区域 */
+/* 执行日志区域 - 占用剩余空间 */
 .knowledge-panel > div:last-child {
-  flex: 0 0 50%;
+  flex: 1; /* 占用剩余所有空间 */
   padding: 10px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* 防止溢出 */
+  min-height: 0; /* 允许收缩 */
 }
 
 /* 聊天区域样式 */
@@ -107,4 +111,47 @@
 .execution-log-container {
   scrollbar-width: thin;
   scrollbar-color: #dbe7f7 #f3f3f8;
+}
+
+/* D区内部弹性布局优化 */
+.knowledge-area-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.knowledge-references-flex {
+  flex-shrink: 0;
+  overflow: auto;
+  max-height: 60vh;
+}
+
+.execution-logs-flex {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 执行日志内容区域的滚动优化 */
+.execution-logs-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* 确保日志项目不会导致水平滚动 */
+.execution-logs-content > div {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ConversationList from './ConversationList';
 import ConversationHeader from './components/ConversationHeader';
 import ChatArea from './components/ChatArea';
@@ -52,13 +52,41 @@ function ConversationLayout() {
   } = useConversationLayout();
 
   const [executionLogs, setExecutionLogs] = useState<LogEntry[]>([]);
-  const [autoUpdateCode, setAutoUpdateCode] = useState(true);
+  const [autoUpdateCode, setAutoUpdateCode] = useState(false);
+  const [lastExecutionSummary, setLastExecutionSummary] = useState<any>(null);
+  const [currentCharCountLogId, setCurrentCharCountLogId] = useState<string | null>(null);
+  const [autoUpdateStateAtStart, setAutoUpdateStateAtStart] = useState<boolean | null>(null);
 
   const currentProjectId = currentMeta?.projectId ?? selectedProjectId;
+
+  // 添加日志的辅助函数
+  const addLog = useCallback((message: string, type: string = 'info', data?: any) => {
+    const logEntry: LogEntry = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      message,
+      type,
+      timestamp: new Date().toISOString(),
+      data,
+    };
+    setExecutionLogs(prev => [...prev, logEntry]);
+    return logEntry.id;
+  }, []);
+
+  // 更新指定日志的辅助函数
+  const updateLog = useCallback((logId: string, message: string, type?: string) => {
+    setExecutionLogs(prev => prev.map(log => 
+      log.id === logId 
+        ? { ...log, message, ...(type && { type }) }
+        : log
+    ));
+  }, []);
 
   // 清空执行日志
   const handleClearExecutionLogs = useCallback(() => {
     setExecutionLogs([]);
+    setLastExecutionSummary(null);
+    setCurrentCharCountLogId(null);
+    setAutoUpdateStateAtStart(null);
   }, []);
 
   // 自动更新代码复选框变化处理
@@ -66,8 +94,58 @@ function ConversationLayout() {
     setAutoUpdateCode(checked);
   }, []);
 
-  // 消息完成时的处理
-  const handleMessageComplete = useCallback(async (content: string) => {
+  // 监听用户发送消息
+  const handleUserSendMessage = useCallback(() => {
+    if (input.trim() && !loading) {
+      // 记录发送时的自动更新代码状态
+      setAutoUpdateStateAtStart(autoUpdateCode);
+      
+      // 如果勾选了自动更新代码，添加采集代码日志
+      if (autoUpdateCode) {
+        addLog('准确采集代码', 'info');
+      }
+      
+      // 重置字符计数日志ID
+      setCurrentCharCountLogId(null);
+      
+      handleSendMessage();
+    }
+  }, [input, loading, autoUpdateCode, handleSendMessage, addLog]);
+
+  // 处理字符计数更新 - 修复：确保只更新同一行
+  const handleCharacterUpdate = useCallback((charCount: number) => {
+    if (currentCharCountLogId) {
+      // 更新现有的字符计数日志
+      updateLog(currentCharCountLogId, `正在接收第${charCount}个字符`);
+    } else {
+      // 第一次创建字符计数日志
+      const logId = addLog(`正在接收第${charCount}个字符`, 'info');
+      setCurrentCharCountLogId(logId);
+    }
+  }, [currentCharCountLogId, updateLog, addLog]);
+
+  // 处理消息完成
+  const handleMessageComplete = useCallback(async (content: string, finalCharCount: number) => {
+    // 3. 接收完成，更新字符计数（更新同一行）
+    if (currentCharCountLogId) {
+      updateLog(currentCharCountLogId, `共接收${finalCharCount}个字符。`, 'info');
+      setCurrentCharCountLogId(null);
+    }
+
+    // 4. 修正状态判断逻辑：只有从勾选变为不勾选才算取消
+    console.log('状态检查:', {
+      autoUpdateStateAtStart,
+      currentAutoUpdateCode: autoUpdateCode,
+      shouldCancel: autoUpdateStateAtStart === true && autoUpdateCode === false
+    });
+
+    // 只有当开始时勾选了但现在不勾选时，才算是用户取消了代码更新
+    if (autoUpdateStateAtStart === true && autoUpdateCode === false) {
+      addLog('代码更新已取消', 'warning');
+      return;
+    }
+
+    // 如果当前没有勾选自动更新代码，或者没有项目ID，则不执行（不显示取消消息）
     if (!autoUpdateCode || !currentMeta?.projectId) {
       return;
     }
@@ -79,7 +157,7 @@ function ConversationLayout() {
       const aiWorkDir = project.ai_work_dir || project.aiWorkDir;
       
       if (!aiWorkDir) {
-        console.warn('项目未配置AI工作目录，无法自动更新代码');
+        addLog('项目未配置AI工作目录，无法自动更新代码', 'warning');
         return;
       }
 
@@ -90,14 +168,12 @@ function ConversationLayout() {
         (data) => {
           // 只处理 error, warning, summary 类型的日志
           if (['error', 'warning', 'summary'].includes(data.type)) {
-            const logEntry: LogEntry = {
-              id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-              message: data.message,
-              type: data.type,
-              timestamp: data.timestamp,
-              data: data.data,
-            };
-            setExecutionLogs(prev => [...prev, logEntry]);
+            addLog(data.message, data.type, data.data);
+            
+            // 如果是summary类型，保存摘要信息
+            if (data.type === 'summary') {
+              setLastExecutionSummary(data.data);
+            }
           }
         },
         () => {
@@ -106,28 +182,42 @@ function ConversationLayout() {
         },
         (error) => {
           // 执行出错
-          const errorLog: LogEntry = {
-            id: `error_${Date.now()}`,
-            message: `自动更新代码失败: ${error?.message || error}`,
-            type: 'error',
-            timestamp: new Date().toISOString(),
-            data: error?.message || error,
-          };
-          setExecutionLogs(prev => [...prev, errorLog]);
+          addLog(`自动更新代码失败: ${error?.message || error}`, 'error', error?.message || error);
         }
       );
     } catch (e: any) {
       console.error('自动更新代码失败:', e);
-      const errorLog: LogEntry = {
-        id: `error_${Date.now()}`,
-        message: `自动更新代码失败: ${e?.message || e}`,
-        type: 'error',
-        timestamp: new Date().toISOString(),
-        data: e?.message || e,
-      };
-      setExecutionLogs(prev => [...prev, errorLog]);
+      addLog(`自动更新代码失败: ${e?.message || e}`, 'error', e?.message || e);
     }
-  }, [autoUpdateCode, currentMeta?.projectId]);
+  }, [autoUpdateCode, autoUpdateStateAtStart, currentMeta?.projectId, currentCharCountLogId, updateLog, addLog]);
+
+  // 监听来自useChatStream的事件
+  useEffect(() => {
+    const handleMessageCompleteEvent = (event: CustomEvent) => {
+      const { content, charCount } = event.detail;
+      handleMessageComplete(content, charCount);
+    };
+
+    const handleCharacterUpdateEvent = (event: CustomEvent) => {
+      const charCount = event.detail;
+      handleCharacterUpdate(charCount);
+    };
+
+    // 监听消息开始事件，重置字符计数日志ID
+    const handleMessageStartEvent = () => {
+      setCurrentCharCountLogId(null);
+    };
+
+    window.addEventListener('message-complete', handleMessageCompleteEvent as EventListener);
+    window.addEventListener('character-update', handleCharacterUpdateEvent as EventListener);
+    window.addEventListener('message-start', handleMessageStartEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('message-complete', handleMessageCompleteEvent as EventListener);
+      window.removeEventListener('character-update', handleCharacterUpdateEvent as EventListener);
+      window.removeEventListener('message-start', handleMessageStartEvent as EventListener);
+    };
+  }, [handleMessageComplete, handleCharacterUpdate]);
 
   return (
     <ProjectProvider projects={projects as any} currentProjectId={currentProjectId}>
@@ -176,7 +266,6 @@ function ConversationLayout() {
             conversationId={conversationId}
             executionLogs={executionLogs}
             onClearExecutionLogs={handleClearExecutionLogs}
-            onMessageComplete={handleMessageComplete}
           />
           <InputArea
             inputVisible={inputVisible}
@@ -185,22 +274,24 @@ function ConversationLayout() {
             loading={loading}
             autoUpdateCode={autoUpdateCode}
             onInputChange={setInput}
-            onSend={handleSendMessage}
+            onSend={handleUserSendMessage} 
             onStop={handleStopClick}
             onAutoUpdateCodeChange={handleAutoUpdateCodeChange}
           />
         </div>
 
-        {/* 知识库面板 - 移到最右边，包含执行日志 */}
+        {/* 知识库面板 */}
         <KnowledgePanel
           conversationId={conversationId}
           currentMeta={currentMeta}
           executionLogs={executionLogs}
           onClearLogs={handleClearExecutionLogs}
+          lastExecutionSummary={lastExecutionSummary}
         />
       </div>
     </ProjectProvider>
   );
 }
 
+// 添加默认导出
 export default ConversationLayout;

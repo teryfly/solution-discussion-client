@@ -25,7 +25,6 @@ interface ChatAreaProps {
   conversationId: string;
   executionLogs: LogEntry[];
   onClearExecutionLogs: () => void;
-  onMessageComplete?: (content: string) => void;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
@@ -43,29 +42,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   conversationId,
   executionLogs,
   onClearExecutionLogs,
-  onMessageComplete,
 }) => {
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [hasScrolledToLastMessage, setHasScrolledToLastMessage] = useState(false);
-
-  // 监听消息变化，检测助手消息完成
-  useEffect(() => {
-    if (messages.length === 0) return;
-    
-    const lastMessage = messages[messages.length - 1];
-    // 检查是否是完成的助手消息（不包含等待动画）
-    if (
-      lastMessage &&
-      lastMessage.role === 'assistant' &&
-      typeof lastMessage.content === 'string' &&
-      !lastMessage.content.includes('<span class="waiting-typing">') &&
-      lastMessage.content.trim().length > 0
-    ) {
-      // 触发消息完成回调
-      onMessageComplete?.(lastMessage.content);
-    }
-  }, [messages, onMessageComplete]);
 
   // 自动滚动逻辑
   useEffect(() => {

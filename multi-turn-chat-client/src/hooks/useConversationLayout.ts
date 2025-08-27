@@ -83,11 +83,31 @@ export function useConversationLayout() {
     appendMessage
   );
 
+  // 创建消息完成处理函数
+  const handleMessageCompleteForAutoUpdate = (content: string, charCount: number) => {
+    // 通过自定义事件传递给ConversationLayout
+    const event = new CustomEvent('message-complete', { 
+      detail: { content, charCount } 
+    });
+    window.dispatchEvent(event);
+  };
+
+  // 创建字符计数更新处理函数
+  const handleCharacterUpdateForDisplay = (charCount: number) => {
+    // 通过自定义事件传递给ConversationLayout
+    const event = new CustomEvent('character-update', { 
+      detail: charCount 
+    });
+    window.dispatchEvent(event);
+  };
+
   const { send, loading, setActiveConversation, stopStream } = useChatStream(
     conversationId,
     model,
     appendMessage,
-    getDocumentIds
+    getDocumentIds,
+    handleMessageCompleteForAutoUpdate,
+    handleCharacterUpdateForDisplay
   );
 
   // 设置活跃会话

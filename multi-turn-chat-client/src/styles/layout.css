@@ -49,14 +49,16 @@ h2 {
   background: #f9f9fc;
 }
 
-/* 知识库列样式 - 更新为包含执行日志的复合列 */
+/* 知识库列样式 - 优化布局结构 */
 .knowledge-column {
-  width: 120px;
+  width: 200px;
   flex-shrink: 0;
   border-right: 1px solid #ccc;
   background: #f9f9fc;
   display: flex;
   flex-direction: column;
+  height: 100vh; /* 固定高度为屏幕高度 */
+  overflow: hidden; /* 防止整体滚动 */
 }
 
 /* 聊天列样式 */
@@ -66,24 +68,28 @@ h2 {
   background: #ffffff;
 }
 
-/* 知识库面板内部区域样式 */
+/* 知识库面板内部区域样式 - 优化为弹性布局 */
 .knowledge-references-area {
-  flex: 0 0 50%;
-  border-bottom: 1px solid #ddd;
+  padding: 10px;
   overflow: auto;
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0; /* 不压缩 */
+  max-height: 60vh; /* 最大高度限制 */
 }
 
 .execution-logs-area {
-  flex: 0 0 50%;
+  flex: 1; /* 占用剩余空间 */
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-height: 0; /* 允许收缩 */
+  overflow: hidden; /* 防止溢出 */
 }
 
-/* 执行日志样式 */
+/* 执行日志样式 - 优化滚动和布局 */
 .execution-log-container {
-  flex: 1;
-  overflow: auto;
+  flex: 1; /* 占用剩余空间 */
+  overflow: auto; /* 内容过多时滚动 */
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 10px;
   line-height: 1.4;
@@ -91,6 +97,7 @@ h2 {
   border: 1px solid #eee;
   border-radius: 4px;
   padding: 6px;
+  min-height: 0; /* 允许收缩 */
 }
 
 .execution-log-entry {
@@ -106,6 +113,7 @@ h2 {
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
+  flex-shrink: 0; /* 标题行不收缩 */
 }
 
 .execution-log-timestamp {
@@ -135,6 +143,18 @@ h2 {
   font-size: 10px;
   word-break: break-word;
   white-space: pre-wrap;
+}
+
+/* 执行摘要样式 */
+.execution-summary {
+  font-size: 11px;
+  padding: 4px 6px;
+  margin-bottom: 8px;
+  background: #e8f5e8;
+  border-radius: 4px;
+  color: #2e7d32;
+  font-weight: 500;
+  flex-shrink: 0; /* 摘要行不收缩 */
 }
 
 /* 自动更新代码复选框样式 */

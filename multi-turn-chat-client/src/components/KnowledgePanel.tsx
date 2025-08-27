@@ -10,7 +10,6 @@ import {
 import ProjectReferenceModal from './ProjectReferenceModal';
 import ConversationReferenceModal from './ConversationReferenceModal';
 import DocumentDetailModal from './DocumentDetailModal';
-
 interface LogEntry {
   id: string;
   message: string;
@@ -18,21 +17,21 @@ interface LogEntry {
   timestamp: string;
   data?: any;
 }
-
 interface KnowledgePanelProps {
   conversationId: string;
   currentMeta?: ConversationMeta;
   onRefresh?: () => void;
   executionLogs: LogEntry[];
   onClearLogs?: () => void;
+  lastExecutionSummary?: any;
 }
-
 const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   conversationId,
   currentMeta,
   onRefresh,
   executionLogs,
   onClearLogs,
+  lastExecutionSummary,
 }) => {
   const [projectReferences, setProjectReferences] = useState<DocumentReference[]>([]);
   const [conversationReferences, setConversationReferences] = useState<DocumentReference[]>([]);
@@ -43,14 +42,13 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
   const [selectedDocument, setSelectedDocument] = useState<DocumentReference | null>(null);
   const [showDocumentDetailModal, setShowDocumentDetailModal] = useState(false);
   const logContainerRef = useRef<HTMLDivElement>(null);
-
+  const knowledgeAreaRef = useRef<HTMLDivElement>(null);
   // 自动滚动到日志底部
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [executionLogs]);
-
   // 加载引用文档
   const loadReferencedDocuments = async () => {
     if (!conversationId) {
@@ -58,7 +56,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       setConversationReferences([]);
       return;
     }
-
     setLoading(true);
     try {
       const data = await getConversationReferencedDocuments(conversationId);
@@ -66,7 +63,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       const sortedProjectRefs = (data.project_references || []).sort((a, b) => b.document_id - a.document_id);
       // 按ID倒序排序会话级引用
       const sortedConversationRefs = (data.conversation_references || []).sort((a, b) => b.document_id - a.document_id);
-      
       setProjectReferences(sortedProjectRefs);
       setConversationReferences(sortedConversationRefs);
     } catch (error) {
@@ -77,24 +73,19 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadReferencedDocuments();
   }, [conversationId]);
-
   // 打开文档详情弹窗
   const handleDocumentClick = (doc: DocumentReference) => {
     setSelectedDocument(doc);
     setShowDocumentDetailModal(true);
   };
-
   // 处理文档ID变更（编辑后创建新版本）
   const handleDocumentChange = async (newDocumentId: number) => {
     if (!selectedDocument) return;
-
     try {
       const oldDocumentId = selectedDocument.document_id;
-      
       // 根据文档类型更新引用关系
       if (projectReferences.some(ref => ref.document_id === oldDocumentId)) {
         // 项目级引用
@@ -113,7 +104,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         const newRefIds = currentRefIds.map(id => id === oldDocumentId ? newDocumentId : id);
         await setConversationDocumentReferences(conversationId, newRefIds);
       }
-
       // 重新加载引用文档
       await loadReferencedDocuments();
       onRefresh?.();
@@ -122,7 +112,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       alert('更新文档引用关系失败: ' + (error as any)?.message);
     }
   };
-
   // 快捷删除引用 - 使用正确的逻辑
   const handleQuickRemove = async (doc: DocumentReference, type: 'project' | 'conversation', e: React.MouseEvent) => {
     e.stopPropagation();
@@ -151,12 +140,10 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       console.error('删除引用失败:', error);
     }
   };
-
   const handleRefreshReferences = () => {
     loadReferencedDocuments();
     onRefresh?.();
   };
-
   // 获取日志类型对应的样式
   const getLogTypeStyle = (type: string) => {
     switch (type) {
@@ -170,7 +157,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         return { color: '#666' };
     }
   };
-
   // 格式化时间戳
   const formatTimestamp = (timestamp: string) => {
     try {
@@ -179,11 +165,18 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
       return timestamp;
     }
   };
-
+  // 精简执行摘要显示：成功X, 失败Y, 无效Z
+  const formatExecutionSummary = (summary: any) => {
+    if (!summary) return '';
+    const successful = Number(summary.successful_tasks ?? 0);
+    const failed = Number(summary.failed_tasks ?? 0);
+    const invalid = Number(summary.invalid_tasks ?? 0);
+    return `成功${successful}, 失败${failed}, 无效${invalid}`;
+  };
   if (!conversationId) {
     return (
       <div style={{ 
-        width: '120px', 
+        width: '200px', 
         borderLeft: '1px solid #ccc', 
         padding: '10px',
         background: '#f9f9fc',
@@ -191,29 +184,34 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         color: '#888',
-        fontSize: '14px'
+        fontSize: '14px',
+        height: '100vh'
       }}>
         请选择会话
       </div>
     );
   }
-
   return (
     <div style={{ 
-      width: '120px', 
+      width: '200px', 
       borderLeft: '1px solid #ccc', 
       background: '#f9f9fc',
       height: '100vh',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      overflow: 'hidden' // 防止整体滚动
     }}>
-      {/* D1: 知识库引用区域 (上半部分) */}
-      <div style={{
-        flex: '0 0 50%',
-        padding: '10px',
-        overflow: 'auto',
-        borderBottom: '1px solid #ddd'
-      }}>
+      {/* D1: 知识库引用区域 - 高度根据内容动态调整 */}
+      <div 
+        ref={knowledgeAreaRef}
+        style={{
+          padding: '10px',
+          overflow: 'auto',
+          borderBottom: '1px solid #ddd',
+          flexShrink: 0, // 不压缩
+          maxHeight: '60vh' // 最大高度限制，避免占用太多空间
+        }}
+      >
         <h4 style={{ 
           margin: '0 0 16px 0', 
           fontSize: '14px', 
@@ -222,13 +220,11 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         }}>
           知识库
         </h4>
-
         {loading && (
           <div style={{ color: '#888', fontSize: '12px', textAlign: 'center' }}>
             加载中...
           </div>
         )}
-
         {!loading && (
           <>
             {/* 项目级引用 */}
@@ -250,7 +246,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                 <span>项目级引用</span>
                 <span style={{ fontSize: '10px' }}>✏️</span>
               </div>
-              
               {projectReferences.length === 0 ? (
                 <div style={{ 
                   fontSize: '11px', 
@@ -295,8 +290,8 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                           whiteSpace: 'nowrap',
                           marginRight: '4px'
                         }}>
-                          {doc.document_filename.length > 10 
-                            ? doc.document_filename.slice(0, 10) + '...'
+                          {doc.document_filename.length > 15 
+                            ? doc.document_filename.slice(0, 15) + '...'
                             : doc.document_filename
                           }
                         </span>
@@ -332,7 +327,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                 </div>
               )}
             </div>
-
             {/* 会话级引用 */}
             <div>
               <div 
@@ -352,7 +346,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                 <span>会话级引用</span>
                 <span style={{ fontSize: '10px' }}>✏️</span>
               </div>
-              
               {conversationReferences.length === 0 ? (
                 <div style={{ 
                   fontSize: '11px', 
@@ -397,8 +390,8 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
                           whiteSpace: 'nowrap',
                           marginRight: '4px'
                         }}>
-                          {doc.document_filename.length > 10 
-                            ? doc.document_filename.slice(0, 10) + '...'
+                          {doc.document_filename.length > 15 
+                            ? doc.document_filename.slice(0, 15) + '...'
                             : doc.document_filename
                           }
                         </span>
@@ -437,19 +430,21 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
           </>
         )}
       </div>
-
-      {/* D2: 执行日志区域 (下半部分) */}
+      {/* D2: 执行日志区域 - 占用剩余空间，内容滚动 */}
       <div style={{
-        flex: '0 0 50%',
+        flex: 1, // 占用剩余所有空间
         padding: '10px',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        minHeight: 0, // 允许收缩
+        overflow: 'hidden' // 防止溢出
       }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '8px'
+          marginBottom: '8px',
+          flexShrink: 0 // 标题行不收缩
         }}>
           <h4 style={{ 
             margin: 0, 
@@ -477,19 +472,35 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
             </button>
           )}
         </div>
-
+        {/* 显示执行摘要 */}
+        {lastExecutionSummary && (
+          <div style={{
+            fontSize: '11px',
+            padding: '4px 6px',
+            marginBottom: '8px',
+            background: '#e8f5e8',
+            borderRadius: '4px',
+            color: '#2e7d32',
+            fontWeight: '500',
+            flexShrink: 0 // 摘要行不收缩
+          }}>
+            {formatExecutionSummary(lastExecutionSummary)}
+          </div>
+        )}
+        {/* 日志容器 - 可滚动 */}
         <div
           ref={logContainerRef}
           style={{
-            flex: 1,
-            overflow: 'auto',
+            flex: 1, // 占用剩余空间
+            overflow: 'auto', // 内容过多时滚动
             fontFamily: 'monospace',
             fontSize: '10px',
             lineHeight: 1.4,
             background: '#fafafa',
             border: '1px solid #eee',
             borderRadius: '4px',
-            padding: '6px'
+            padding: '6px',
+            minHeight: 0 // 允许收缩
           }}
         >
           {executionLogs.length === 0 ? (
@@ -533,7 +544,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
           )}
         </div>
       </div>
-
       {/* 项目级引用编辑弹窗 */}
       {showProjectReferenceModal && currentMeta?.projectId && (
         <ProjectReferenceModal
@@ -543,7 +553,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
           onUpdate={handleRefreshReferences}
         />
       )}
-
       {/* 会话级引用编辑弹窗 */}
       {showConversationReferenceModal && currentMeta?.projectId && (
         <ConversationReferenceModal
@@ -554,7 +563,6 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
           onUpdate={handleRefreshReferences}
         />
       )}
-
       {/* 文档详情弹窗 */}
       {showDocumentDetailModal && selectedDocument && (
         <DocumentDetailModal
@@ -571,5 +579,4 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     </div>
   );
 };
-
 export default KnowledgePanel;

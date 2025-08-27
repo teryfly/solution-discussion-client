@@ -57,9 +57,9 @@
   background-color: #f0f0f0;
 }
 
-/* 知识库面板样式 - 更新为支持分割布局 */
+/* 知识库面板样式 - 更新宽度为200px，支持分割布局 */
 .knowledge-panel {
-  width: 120px;
+  width: 200px; /* 从120px增加到200px */
   border-right: 1px solid #ccc;
   background: #f9f9fc;
   height: 100vh;
