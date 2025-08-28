@@ -159,12 +159,8 @@ const ConversationList: React.FC<Props> = ({
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const defaultProjectName = selectedProject?.name || '其它';
 
-  // 将"其它"项目移到最后
-  const sortedProjects = [...projects].sort((a, b) => {
-    if (a.id === 0) return 1; // "其它"排到最后
-    if (b.id === 0) return -1;
-    return 0; // 保持其他项目的原有顺序
-  });
+  // 直接使用传入的 projects 顺序（已在 refreshProjects 中按更新时间倒序并把“其它”放最后）
+  const sortedProjects = projects;
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>

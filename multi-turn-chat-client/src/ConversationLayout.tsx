@@ -98,11 +98,6 @@ function ConversationLayout() {
       // 记录发送时的自动更新代码状态
       setAutoUpdateStateAtStart(autoUpdateCode);
       
-      // 如果勾选了自动更新代码，添加采集代码日志
-      if (autoUpdateCode) {
-        addLog('准确采集代码', 'info');
-      }
-      
       handleSendMessage();
     }
   }, [input, loading, autoUpdateCode, handleSendMessage, addLog]);
