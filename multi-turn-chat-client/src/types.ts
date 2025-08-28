@@ -4,6 +4,7 @@ export type Message = {
   content: string;
   collapsed?: boolean;
   id?: number; // 添加可选的消息ID字段
+  updated_at?: string; // 新增：消息更新时间（ISO字符串）
 };
 
 export type ConversationMeta = {

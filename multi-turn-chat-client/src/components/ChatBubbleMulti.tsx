@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import BubbleActions from './BubbleActions';
 import MarkdownRenderer from './MarkdownRenderer';
+
 function isWaitingTyping(msg: Message) {
   return (
     msg.role === 'assistant' &&
@@ -32,12 +33,20 @@ function copyToClipboard(text: string) {
     return Promise.resolve();
   }
 }
-// 计算文本字数（中文按1字符，英文按0.5字符计算）
-function getTextCharCount(text: string): number {
-  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-  const otherChars = text.replace(/[\u4e00-\u9fff]/g, '').length;
-  return Math.ceil(chineseChars + otherChars * 0.5);
+function formatTime(iso?: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${mm}-${dd} ${hh}:${mi}`;
+  } catch {
+    return '';
+  }
 }
+
 interface ChatBubbleMultiProps {
   groupIdx: number;
   group: any;
@@ -57,6 +66,7 @@ interface ChatBubbleMultiProps {
   triggerCopyAnim: (key: string) => void;
   COLLAPSE_LENGTH: number;
 }
+
 const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
   groupIdx,
   group,
@@ -76,6 +86,7 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
   const showTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const msgRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+
   const handleMouseEnter = (e: React.MouseEvent, msgIndex: number) => {
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     if (visibleMsgIndex !== msgIndex && msgRefs.current[msgIndex]) {
@@ -93,12 +104,14 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
       setVisibleMsgIndex(null);
     }, 1000);
   };
+
   useEffect(() => {
     return () => {
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
       if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current);
     };
   }, []);
+
   return (
     <div
       className={`chat-group-bubble ${group.role}`}
@@ -128,7 +141,7 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
         if (!found) onRightClick(e, groupIdx, null, group);
       }}
     >
-      {group.msgs.map((msg: any, i: number) => {
+      {group.msgs.map((msg: Message, i: number) => {
         const refKey = `${groupIdx}-${i}`;
         const content = (typeof msg.content === 'string' ? msg.content : String(msg.content)).trim();
         const lineCount = getLineCount(content);
@@ -139,10 +152,11 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
           if (onCopy) onCopy(content);
           triggerCopyAnim(refKey);
         };
-        const handleToggle = () => {
-          onToggle(group.indices[i]);
-        };
+        const handleToggle = () => onToggle(group.indices[i]);
         const anim = !!(copyAnimMap && copyAnimMap[refKey]);
+        const isUser = msg.role === 'user';
+        const timeText = formatTime(msg.updated_at);
+
         return (
           <div
             key={i}
@@ -185,10 +199,23 @@ const ChatBubbleMulti: React.FC<ChatBubbleMultiProps> = ({
                   ? <span dangerouslySetInnerHTML={{ __html: msg.content }} />
                   : <MarkdownRenderer content={content} />}
             </div>
+            {timeText && (
+              <div
+                style={{
+                  fontSize: 10,
+                  color: '#888',
+                  marginTop: 4,
+                  textAlign: isUser ? 'right' : 'left'
+                }}
+              >
+                {timeText}
+              </div>
+            )}
           </div>
         );
       })}
     </div>
   );
 };
+
 export default ChatBubbleMulti;

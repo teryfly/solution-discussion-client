@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import BubbleActions from './BubbleActions';
 import MarkdownRenderer from './MarkdownRenderer';
+
 function isWaitingTyping(msg: Message) {
   return (
     msg.role === 'assistant' &&
@@ -32,12 +33,20 @@ function copyToClipboard(text: string) {
     return Promise.resolve();
   }
 }
-// 计算文本字数（中文按1字符，英文按0.5字符计算）
-function getTextCharCount(text: string): number {
-  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-  const otherChars = text.replace(/[\u4e00-\u9fff]/g, '').length;
-  return Math.ceil(chineseChars + otherChars * 0.5);
+function formatTime(iso?: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${mm}-${dd} ${hh}:${mi}`;
+  } catch {
+    return '';
+  }
 }
+
 interface ChatBubbleSingleProps {
   groupIdx: number;
   msg: Message;
@@ -59,6 +68,7 @@ interface ChatBubbleSingleProps {
   triggerCopyAnim: (key: string) => void;
   COLLAPSE_LENGTH: number;
 }
+
 const ChatBubbleSingle: React.FC<ChatBubbleSingleProps> = ({
   groupIdx,
   msg,
@@ -84,14 +94,13 @@ const ChatBubbleSingle: React.FC<ChatBubbleSingleProps> = ({
   const content = (typeof msg.content === 'string' ? msg.content : String(msg.content)).trim();
   const lineCount = getLineCount(content);
   const showExpandIcon = lineCount > 1;
+
   const handleCopy = () => {
     copyToClipboard(content);
     if (onCopy) onCopy(content);
     triggerCopyAnim(bubbleKey);
   };
-  const handleToggle = () => {
-    onToggle(group.indices[0]);
-  };
+  const handleToggle = () => onToggle(group.indices[0]);
   const handleMouseEnter = (e: React.MouseEvent) => {
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     if (!isVisible && bubbleRef.current) {
@@ -115,6 +124,7 @@ const ChatBubbleSingle: React.FC<ChatBubbleSingleProps> = ({
   const handleActionsMouseLeave = () => {
     hideTimeoutRef.current = setTimeout(() => setIsVisible(false), 1000);
   };
+
   useEffect(() => {
     bubbleRefs.current[bubbleKey] = bubbleRef.current;
     return () => {
@@ -122,6 +132,10 @@ const ChatBubbleSingle: React.FC<ChatBubbleSingleProps> = ({
       if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current);
     };
   }, [bubbleKey, bubbleRefs]);
+
+  const isUser = msg.role === 'user';
+  const timeText = formatTime(msg.updated_at);
+
   return (
     <div
       className={`chat-msg ${msg.role}`}
@@ -155,7 +169,20 @@ const ChatBubbleSingle: React.FC<ChatBubbleSingleProps> = ({
             ? <span dangerouslySetInnerHTML={{ __html: msg.content }} />
             : <MarkdownRenderer content={content} />}
       </div>
+      {timeText && (
+        <div
+          style={{
+            fontSize: 10,
+            color: '#888',
+            marginTop: 4,
+            textAlign: isUser ? 'right' : 'left'
+          }}
+        >
+          {timeText}
+        </div>
+      )}
     </div>
   );
 };
+
 export default ChatBubbleSingle;
