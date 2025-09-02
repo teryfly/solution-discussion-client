@@ -71,10 +71,10 @@ const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
     setLoading(true);
     try {
       const data = await getConversationReferencedDocuments(conversationId);
-      // 按ID倒序排序项目级引用
-      const sortedProjectRefs = (data.project_references || []).sort((a, b) => b.document_id - a.document_id);
-      // 按ID倒序排序会话级引用
-      const sortedConversationRefs = (data.conversation_references || []).sort((a, b) => b.document_id - a.document_id);
+      // 按引用关系的id正序排序项目级引用
+      const sortedProjectRefs = (data.project_references || []).sort((a, b) => a.id - b.id);
+      // 按引用关系的id正序排序会话级引用
+      const sortedConversationRefs = (data.conversation_references || []).sort((a, b) => a.id - b.id);
       
       setProjectReferences(sortedProjectRefs);
       setConversationReferences(sortedConversationRefs);
