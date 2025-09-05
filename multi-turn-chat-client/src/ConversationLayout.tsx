@@ -138,22 +138,17 @@ function ConversationLayout() {
         aiWorkDir,
         content,
         (data) => {
-          // 只处理 error, warning, summary 类型的日志
-          if (['error', 'warning', 'summary'].includes(data.type)) {
-            addLog(data.message, data.type, data.data);
-            
-            // 如果是summary类型，保存摘要信息
-            if (data.type === 'summary') {
-              setLastExecutionSummary(data.data);
-            }
+          // 不过滤任何类型，全部加入日志
+          addLog(data.message, data.type, data.data);
+          if (data.type === 'summary') {
+            setLastExecutionSummary(data.data);
           }
         },
         () => {
           // 执行完成
-          console.log('自动更新代码完成');
+          addLog('自动更新代码完成', 'success');
         },
         (error) => {
-          // 执行出错
           addLog(`自动更新代码失败: ${error?.message || error}`, 'error', error?.message || error);
         }
       );
@@ -176,6 +171,67 @@ function ConversationLayout() {
       window.removeEventListener('message-complete', handleMessageCompleteEvent as EventListener);
     };
   }, [handleMessageComplete]);
+
+  // 监听“重写全部源码”按钮事件：收集消息并写入源码（保留所有日志类型）
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        if (!currentMeta?.projectId) {
+          alert('会话未关联项目，无法写入源码');
+          return;
+        }
+        const { getProjectDetail } = await import('./api');
+        const project = await getProjectDetail(currentMeta.projectId);
+        const aiWorkDir = project.ai_work_dir || project.aiWorkDir;
+        if (!aiWorkDir) {
+          alert('项目未配置AI工作目录，无法写入源码');
+          return;
+        }
+
+        // 1) 遍历所有 LLM 返回（assistant）的消息
+        const assistantMsgs = (messages || []).filter(m => m.role === 'assistant');
+
+        // 2) 拼接包含 "Step [" 的消息
+        const selected = assistantMsgs
+          .filter(m => typeof m.content === 'string' && m.content.includes('Step ['))
+          .map(m => (typeof m.content === 'string' ? m.content.trim() : String(m.content).trim()))
+          .filter(Boolean);
+
+        if (selected.length === 0) {
+          addLog('未找到包含 "Step [" 的助手输出', 'info');
+          alert('未找到包含 "Step [" 的助手输出，无法重写源码。');
+          return;
+        }
+
+        const filesContent = selected.join('\n------\n');
+
+        // 3) 写入源码：记录所有类型的事件
+        await writeSourceCode(
+          aiWorkDir,
+          filesContent,
+          (data) => {
+            // 关键修正：不进行类型过滤，直接记录
+            addLog(data.message, data.type, data.data);
+            if (data.type === 'summary') {
+              setLastExecutionSummary(data.data);
+            }
+          },
+          () => {
+            addLog('重写全部源码执行完成', 'success');
+          },
+          (error) => {
+            addLog(`重写全部源码失败: ${error?.message || error}`, 'error', error?.message || error);
+          }
+        );
+      } catch (e: any) {
+        addLog(`重写全部源码执行异常: ${e?.message || e}`, 'error', e?.message || e);
+        alert('执行失败: ' + (e?.message || e));
+      }
+    };
+
+    window.addEventListener('rewrite-all-source', handler);
+    return () => window.removeEventListener('rewrite-all-source', handler);
+  }, [messages, currentMeta?.projectId, addLog]);
 
   return (
     <ProjectProvider projects={projects as any} currentProjectId={currentProjectId}>
