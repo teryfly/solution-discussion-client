@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { KnowledgeDocument } from '../types';
 import { 
   getKnowledgeDocuments, 
   getProjectDocumentReferences, 
   setProjectDocumentReferences,
   getConversationDocumentReferences,
-  setConversationDocumentReferences
+  setConversationDocumentReferences,
+  getPlanCategories
 } from '../api';
 import AddDocumentModal from './AddDocumentModal';
 import DocumentDetailModal from './DocumentDetailModal';
@@ -29,66 +30,53 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
   const [availableDocuments, setAvailableDocuments] = useState<KnowledgeDocument[]>([]);
   const [currentReferences, setCurrentReferences] = useState<number[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
   const [projectReferencedIds, setProjectReferencedIds] = useState<number[]>([]);
+
   const [showAddDocumentModal, setShowAddDocumentModal] = useState(false);
   const [showDocumentDetailModal, setShowDocumentDetailModal] = useState(false);
   const [selectedDocumentForEdit, setSelectedDocumentForEdit] = useState<any>(null);
 
-  // 获取标题和描述
-  const getTitle = () => type === 'project' ? '编辑项目级引用' : '编辑会话级引用';
-  const getSubtitle = () => {
-    if (type === 'project') {
-      return `项目ID: ${projectId} | 当前已选择: ${selectedDocuments.length} 个文档`;
-    } else {
-      return `会话ID: ${conversationId} | 当前已选择: ${selectedDocuments.length} 个文档`;
-    }
-  };
+  // categories for tabs
+  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
+  const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
 
-  // 加载数据
+  // Load everything
   const loadData = async () => {
     setLoading(true);
     try {
-      if (type === 'project') {
-        // 项目级引用：加载所有知识库文档和当前项目引用
-        const [docsResponse, refsResponse] = await Promise.all([
-          getKnowledgeDocuments(projectId),
-          getProjectDocumentReferences(projectId)
-        ]);
+      // 1) categories
+      const cats = await getPlanCategories();
+      setCategories(cats || []);
 
-        // 按ID倒序排序
-        const sortedDocs = (docsResponse || []).sort((a, b) => b.id - a.id);
-        setAvailableDocuments(sortedDocs);
+      // 2) documents: fetch ALL documents for the project
+      const docsResponse = await getKnowledgeDocuments(projectId);
+      const allDocs = (docsResponse || []).sort((a: any, b: any) => b.id - a.id);
+
+      if (type === 'project') {
+        const refsResponse = await getProjectDocumentReferences(projectId);
         const currentRefIds = (refsResponse || []).map((ref: any) => ref.document_id);
+        setAvailableDocuments(allDocs);
         setCurrentReferences(currentRefIds);
         setSelectedDocuments([...currentRefIds]);
         setProjectReferencedIds([]);
       } else {
-        // 会话级引用：需要排除项目级已引用的文档
         if (!conversationId) return;
-        
-        const [docsResponse, convRefsResponse, projRefsResponse] = await Promise.all([
-          getKnowledgeDocuments(projectId),
+        const [convRefsResponse, projRefsResponse] = await Promise.all([
           getConversationDocumentReferences(conversationId),
           getProjectDocumentReferences(projectId)
         ]);
-
-        const allDocs = docsResponse || [];
         const projRefIds = (projRefsResponse || []).map((ref: any) => ref.document_id);
-        
-        // 过滤出可选择的文档（排除项目级已引用的）并按ID倒序排序
-        const selectableDocs = allDocs
-          .filter(doc => !projRefIds.includes(doc.id))
-          .sort((a, b) => b.id - a.id);
-        
+        // 会话级需排除项目级已引用
+        const selectableDocs = allDocs.filter(doc => !projRefIds.includes(doc.id));
         setAvailableDocuments(selectableDocs);
-        setProjectReferencedIds(projRefIds);
-        
         const currentRefIds = (convRefsResponse || []).map((ref: any) => ref.document_id);
         setCurrentReferences(currentRefIds);
         setSelectedDocuments([...currentRefIds]);
+        setProjectReferencedIds(projRefIds);
       }
     } catch (error) {
       console.error('加载数据失败:', error);
@@ -101,30 +89,26 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
   useEffect(() => {
     if (visible) {
       loadData();
+      setActiveCategoryId('all');
     }
   }, [visible, type, projectId, conversationId]);
 
-  // 处理文档选择
   const handleDocumentToggle = (documentId: number) => {
-    setSelectedDocuments(prev => {
-      if (prev.includes(documentId)) {
-        return prev.filter(id => id !== documentId);
-      } else {
-        return [...prev, documentId];
-      }
-    });
+    setSelectedDocuments(prev => prev.includes(documentId) ? prev.filter(id => id !== documentId) : [...prev, documentId]);
   };
 
-  // 全选/全不选
   const handleSelectAll = () => {
-    if (selectedDocuments.length === availableDocuments.length) {
-      setSelectedDocuments([]);
+    const docIdsInCurrentTab = filteredDocuments.map(d => d.id);
+    if (selectedDocuments.filter(id => docIdsInCurrentTab.includes(id)).length === docIdsInCurrentTab.length) {
+      // unselect all in current tab
+      setSelectedDocuments(prev => prev.filter(id => !docIdsInCurrentTab.includes(id)));
     } else {
-      setSelectedDocuments(availableDocuments.map(doc => doc.id));
+      // select all in current tab
+      const toAdd = docIdsInCurrentTab.filter(id => !selectedDocuments.includes(id));
+      setSelectedDocuments(prev => [...prev, ...toAdd]);
     }
   };
 
-  // 保存引用设置
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -149,23 +133,18 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
     }
   };
 
-  // 取消编辑
   const handleCancel = () => {
     setSelectedDocuments([...currentReferences]);
     onClose();
   };
 
-  // 新增文档成功后的回调
   const handleAddDocumentSuccess = () => {
     setShowAddDocumentModal(false);
-    // 重新加载文档列表
     loadData();
   };
 
-  // 打开编辑文档弹窗
   const handleEditDocument = (doc: KnowledgeDocument, e: React.MouseEvent) => {
     e.stopPropagation();
-    // 转换为DocumentReference格式
     setSelectedDocumentForEdit({
       id: doc.id,
       document_id: doc.id,
@@ -177,18 +156,14 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
     setShowDocumentDetailModal(true);
   };
 
-  // 编辑文档成功后的回调
   const handleDocumentEditSuccess = () => {
     setShowDocumentDetailModal(false);
     setSelectedDocumentForEdit(null);
-    // 重新加载文档列表
     loadData();
   };
 
-  // 键盘快捷键支持
   useEffect(() => {
     if (!visible) return;
-    
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -208,14 +183,50 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
         }
       }
     };
-    
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
   }, [visible, selectedDocuments, showAddDocumentModal, showDocumentDetailModal]);
 
-  if (!visible) return null;
+  const hasChanges = useMemo(() => {
+    const a = [...selectedDocuments].sort().join(',');
+    const b = [...currentReferences].sort().join(',');
+    return a !== b;
+  }, [selectedDocuments, currentReferences]);
 
-  const hasChanges = JSON.stringify([...selectedDocuments].sort()) !== JSON.stringify([...currentReferences].sort());
+  // group docs by category id
+  const docsByCategory = useMemo(() => {
+    const map = new Map<number, KnowledgeDocument[]>();
+    for (const d of availableDocuments) {
+      const arr = map.get(d.category_id) || [];
+      arr.push(d);
+      map.set(d.category_id, arr);
+    }
+    return map;
+  }, [availableDocuments]);
+
+  // Build tab list: "全部" + each category that has at least one doc
+  const tabs = useMemo(() => {
+    const list: Array<{ key: number | 'all'; label: string; count: number }> = [];
+    const total = availableDocuments.length;
+    list.push({ key: 'all', label: '全部', count: total });
+    categories.forEach(cat => {
+      const count = docsByCategory.get(cat.id)?.length || 0;
+      if (count > 0) list.push({ key: cat.id, label: cat.name, count });
+    });
+    return list;
+  }, [categories, docsByCategory, availableDocuments.length]);
+
+  const filteredDocuments = useMemo(() => {
+    if (activeCategoryId === 'all') return availableDocuments;
+    return availableDocuments.filter(d => d.category_id === activeCategoryId);
+  }, [availableDocuments, activeCategoryId]);
+
+  const isAllSelectedInTab = useMemo(() => {
+    const ids = filteredDocuments.map(d => d.id);
+    return ids.length > 0 && ids.every(id => selectedDocuments.includes(id));
+  }, [filteredDocuments, selectedDocuments]);
+
+  if (!visible) return null;
 
   return (
     <>
@@ -241,62 +252,72 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
             boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
           }}
         >
-          {/* 左列 - 文档列表 */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* 左列 - 文档列表带分类Tabs */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            {/* Tabs */}
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid #eee', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {tabs.map(tab => (
+                <button
+                  key={String(tab.key)}
+                  onClick={() => setActiveCategoryId(tab.key)}
+                  style={{
+                    padding: '6px 10px',
+                    border: activeCategoryId === tab.key ? '2px solid #1a73e8' : '1px solid #ddd',
+                    background: activeCategoryId === tab.key ? '#e8f0fe' : '#fff',
+                    borderRadius: 999,
+                    color: '#333',
+                    fontSize: 13,
+                    cursor: 'pointer'
+                  }}
+                  title={`${tab.label} (${tab.count})`}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                {filteredDocuments.length > 0 && (
+                  <button
+                    onClick={handleSelectAll}
+                    style={{
+                      padding: '6px 12px',
+                      background: 'none',
+                      border: '1px solid #1a73e8',
+                      color: '#1a73e8',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                    }}
+                  >
+                    {isAllSelectedInTab ? '本页全不选' : '本页全选'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowAddDocumentModal(true)}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#4caf50',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                  }}
+                  title="新增文档"
+                >
+                  + 新增文档
+                </button>
+              </div>
+            </div>
+
             {/* 文档列表 */}
             <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
-              {/* 说明信息（仅会话级引用显示） */}
-              {type === 'conversation' && projectReferencedIds.length > 0 && (
-                <div style={{
-                  marginBottom: 20,
-                  padding: '12px 16px',
-                  background: '#fff3cd',
-                  border: '1px solid #ffeaa7',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  color: '#856404'
-                }}>
-                  <strong>注意：</strong> 已排除 {projectReferencedIds.length} 个项目级引用的文档，避免重复引用。
-                </div>
-              )}
-
               {loading ? (
-                <div style={{ 
-                  textAlign: 'center', 
-                  padding: 60, 
-                  color: '#888',
-                  fontSize: 16 
-                }}>
+                <div style={{ textAlign: 'center', padding: 60, color: '#888', fontSize: 16 }}>
                   加载中...
                 </div>
-              ) : availableDocuments.length === 0 ? (
-                <div style={{ 
-                  textAlign: 'center', 
-                  padding: 60, 
-                  color: '#888',
-                  fontStyle: 'italic',
-                  fontSize: 16 
-                }}>
-                  {type === 'conversation' && projectReferencedIds.length > 0 
-                    ? '该项目的知识库文档均已在项目级引用，无可选择的文档'
-                    : '该项目暂无知识库文档'
-                  }
-                  <div style={{ marginTop: 20 }}>
-                    <button
-                      onClick={() => setShowAddDocumentModal(true)}
-                      style={{
-                        padding: '10px 20px',
-                        background: '#1a73e8',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        fontSize: 14,
-                      }}
-                    >
-                      + 新增文档
-                    </button>
-                  </div>
+              ) : filteredDocuments.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 60, color: '#888', fontStyle: 'italic', fontSize: 16 }}>
+                  当前分类暂无文档
                 </div>
               ) : (
                 <div style={{ 
@@ -304,10 +325,9 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                   gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
                   gap: 16,
                 }}>
-                  {availableDocuments.map((doc) => {
+                  {filteredDocuments.map((doc) => {
                     const isSelected = selectedDocuments.includes(doc.id);
                     const isCurrentlyReferenced = currentReferences.includes(doc.id);
-                    
                     return (
                       <div
                         key={doc.id}
@@ -322,12 +342,8 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                           position: 'relative',
                         }}
                       >
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'flex-start',
-                          gap: 16
-                        }}>
-                          {/* 复选框 */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                          {/* Checkbox visual */}
                           <div style={{
                             width: 24,
                             height: 24,
@@ -340,12 +356,9 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                             flexShrink: 0,
                             marginTop: 2,
                           }}>
-                            {isSelected && (
-                              <span style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>✓</span>
-                            )}
+                            {isSelected && <span style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>✓</span>}
                           </div>
 
-                          {/* 文档信息 */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ 
                               fontWeight: 600, 
@@ -367,13 +380,11 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                                     color: '#2e7d32',
                                     fontSize: 12,
                                     borderRadius: 4,
-                                    fontWeight: 'normal'
                                   }}>
                                     当前引用
                                   </span>
                                 )}
                               </span>
-                              {/* 编辑图标 */}
                               <button
                                 onClick={(e) => handleEditDocument(doc, e)}
                                 style={{
@@ -411,6 +422,7 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                               flexWrap: 'wrap'
                             }}>
                               <span>ID: {doc.id}</span>
+                              <span>分类: {categories.find(c => c.id === doc.category_id)?.name || doc.category_id}</span>
                               <span>版本: v{doc.version}</span>
                               <span>创建: {new Date(doc.created_time).toLocaleDateString()}</span>
                             </div>
@@ -424,10 +436,7 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                               WebkitLineClamp: 3,
                               WebkitBoxOrient: 'vertical'
                             }}>
-                              {doc.content.length > 150 
-                                ? doc.content.slice(0, 150) + '...'
-                                : doc.content || '(无内容预览)'
-                              }
+                              {doc.content.length > 150 ? doc.content.slice(0, 150) + '...' : (doc.content || '(无内容预览)')}
                             </div>
                           </div>
                         </div>
@@ -448,15 +457,16 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
             flexDirection: 'column',
             justifyContent: 'space-between'
           }}>
-            {/* 顶部信息 */}
             <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: 24, color: '#333' }}>
-                    {getTitle()}
+                    {type === 'project' ? '编辑项目级引用' : '编辑会话级引用'}
                   </h2>
                   <div style={{ fontSize: 16, color: '#666', marginTop: 8 }}>
-                    {getSubtitle()}
+                    {type === 'project'
+                      ? `项目ID: ${projectId} | 当前已选择: ${selectedDocuments.length} 个文档`
+                      : `会话ID: ${conversationId} | 当前已选择: ${selectedDocuments.length} 个文档`}
                   </div>
                 </div>
                 <button
@@ -480,38 +490,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                 </button>
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '16px'
-                }}>
-                  <div style={{ fontSize: 16, color: '#333', fontWeight: 500 }}>
-                    知识库文档列表 ({availableDocuments.length})
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {/* 全选按钮 */}
-                    {availableDocuments.length > 0 && (
-                      <button
-                        onClick={handleSelectAll}
-                        style={{
-                          padding: '6px 12px',
-                          background: 'none',
-                          border: '1px solid #1a73e8',
-                          color: '#1a73e8',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontSize: 12,
-                        }}
-                      >
-                        {selectedDocuments.length === availableDocuments.length ? '全不选' : '全选'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               {hasChanges && (
                 <div style={{
                   padding: '12px 16px',
@@ -527,7 +505,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
               )}
             </div>
 
-            {/* 底部操作按钮 - 恢复垂直布局 */}
             <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <button
@@ -546,8 +523,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                 >
                   {saving ? '保存中...' : '保存 (Ctrl+Enter)'}
                 </button>
-                
-                {/* 新增按钮放在保存按钮之后 */}
                 <button
                   onClick={() => setShowAddDocumentModal(true)}
                   style={{
@@ -564,7 +539,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                 >
                   + 新增文档
                 </button>
-                
                 <button
                   onClick={handleCancel}
                   disabled={saving}
@@ -586,7 +560,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
         </div>
       </div>
 
-      {/* 新增文档弹窗 */}
       <AddDocumentModal
         visible={showAddDocumentModal}
         projectId={projectId}
@@ -594,7 +567,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
         onSuccess={handleAddDocumentSuccess}
       />
 
-      {/* 编辑文档弹窗 */}
       {showDocumentDetailModal && selectedDocumentForEdit && (
         <DocumentDetailModal
           visible={true}

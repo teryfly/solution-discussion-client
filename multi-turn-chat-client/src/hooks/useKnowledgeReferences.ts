@@ -13,7 +13,6 @@ export function useKnowledgeReferences(conversationId: string, projectId?: numbe
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 加载会话引用的文档
   const loadReferences = async () => {
     if (!conversationId) {
       setProjectReferences([]);
@@ -64,6 +63,7 @@ export function useKnowledgeDocuments(projectId?: number) {
     setLoading(true);
     setError(null);
     try {
+      // fetch all documents of a project (no category filter)
       const docs = await getKnowledgeDocuments(projectId);
       setDocuments(docs || []);
     } catch (err) {

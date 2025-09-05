@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getProjects, getCompleteSourceCode } from './api';
 import { ROLE_CONFIGS } from './config';
+
 // 默认生成会话名（格式 MMDDhhmmss）
 function generateDefaultName() {
   const now = new Date();
@@ -11,6 +12,7 @@ function generateDefaultName() {
   const ss = String(now.getSeconds()).padStart(2, '0');
   return `${MM}${DD}${hh}${mm}${ss}`;
 }
+
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -25,6 +27,7 @@ interface Props {
   modelOptions: string[];
   defaultProjectName?: string;
 }
+
 const NewConversationModal: React.FC<Props> = ({
   visible,
   onClose,
@@ -41,6 +44,7 @@ const NewConversationModal: React.FC<Props> = ({
   const [modelList, setModelList] = useState<string[]>([]);
   const [learnSourceCode, setLearnSourceCode] = useState(false); // ✅ 是否学习项目源码
   const containerRef = useRef<HTMLDivElement>(null);
+
   function getModelsAndSelect(role: string, modelOptions: string[]) {
     const defaultModel = ROLE_CONFIGS[role]?.model || '';
     let list = [...modelOptions];
@@ -51,6 +55,7 @@ const NewConversationModal: React.FC<Props> = ({
     }
     return { list, value };
   }
+
   useEffect(() => {
     if (visible) {
       setRole('软件架构师'); // 默认
@@ -71,6 +76,7 @@ const NewConversationModal: React.FC<Props> = ({
       setModel(value);
     }
   }, [visible, modelOptions, defaultProjectName]);
+
   const handleRoleChange = (r: string) => {
     setRole(r);
     setName(generateDefaultName());
@@ -82,13 +88,13 @@ const NewConversationModal: React.FC<Props> = ({
     const { list, value } = getModelsAndSelect(r, modelOptions);
     setModelList(list);
     setModel(value);
-    // 自动勾选“学习项目源码”
     if (r === '敏捷开发工程师') {
       setLearnSourceCode(true);
     } else {
       setLearnSourceCode(false);
     }
   };
+
   const handleCreate = async () => {
     let finalSystem = system;
     const projectName = projects.find((p) => p.id === projectId)?.name || '其它';
@@ -111,7 +117,7 @@ const NewConversationModal: React.FC<Props> = ({
     });
     onClose();
   };
-  // 键盘快捷键支持（Enter=创建，Esc=取消）
+
   useEffect(() => {
     if (!visible) return;
     const handler = (e: KeyboardEvent) => {
@@ -122,7 +128,6 @@ const NewConversationModal: React.FC<Props> = ({
             document.activeElement.tagName === 'SELECT' ||
             document.activeElement.tagName === 'TEXTAREA')
         ) {
-          // 避免在文本域换行
           if (document.activeElement.tagName === 'TEXTAREA' && !e.ctrlKey && !e.metaKey) return;
         }
         e.preventDefault();
@@ -135,13 +140,15 @@ const NewConversationModal: React.FC<Props> = ({
     };
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
-    // eslint-disable-next-line
   }, [visible, name, model, system, projectId, learnSourceCode, projects, role, modelOptions, modelList]);
+
   if (!visible) return null;
+
   return (
     <div className="new-conversation-page" ref={containerRef}>
       <div>
         <h2 style={{ textAlign: 'center', marginBottom: 30 }}>新建会话</h2>
+        {/* ...rest UI unchanged... */}
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label>助手角色：</label>
@@ -195,11 +202,7 @@ const NewConversationModal: React.FC<Props> = ({
         {role === '通用助手' && (
           <div>
             <label>System Prompt：</label>
-            <textarea
-              rows={3}
-              value={system}
-              onChange={(e) => setSystem(e.target.value)}
-            />
+            <textarea rows={3} value={system} onChange={(e) => setSystem(e.target.value)} />
           </div>
         )}
         <div className="modal-actions">
@@ -210,4 +213,5 @@ const NewConversationModal: React.FC<Props> = ({
     </div>
   );
 };
+
 export default NewConversationModal;
