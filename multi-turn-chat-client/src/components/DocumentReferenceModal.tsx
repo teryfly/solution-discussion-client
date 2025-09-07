@@ -138,9 +138,8 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
     onClose();
   };
 
-  const handleAddDocumentSuccess = () => {
-    setShowAddDocumentModal(false);
-    loadData();
+  const handleAddDocumentClick = () => {
+    setShowAddDocumentModal(true);
   };
 
   const handleEditDocument = (doc: KnowledgeDocument, e: React.MouseEvent) => {
@@ -156,16 +155,15 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
     setShowDocumentDetailModal(true);
   };
 
+  const handleAddDocumentSuccess = () => {
+    setShowAddDocumentModal(false);
+    loadData();
+  };
+
   const handleDocumentEditSuccess = () => {
     setShowDocumentDetailModal(false);
     setSelectedDocumentForEdit(null);
     loadData();
-  };
-
-  // 处理新增文档按钮点击，传递当前选中的分类ID
-  const handleAddDocumentClick = () => {
-    const categoryId = activeCategoryId === 'all' ? 0 : activeCategoryId;
-    setShowAddDocumentModal(true);
   };
 
   useEffect(() => {
@@ -318,19 +316,19 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
             {/* 文档列表 */}
             <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
               {loading ? (
-                <div style={{ textAlign: 'center', padding: 60, color: '#888', fontSize: 16 }}>
-                  加载中...
-                </div>
+                <div style={{ textAlign: 'center', padding: 60, color: '#888', fontSize: 16 }}>加载中...</div>
               ) : filteredDocuments.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 60, color: '#888', fontStyle: 'italic', fontSize: 16 }}>
                   当前分类暂无文档
                 </div>
               ) : (
-                <div style={{ 
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: 16,
-                }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                    gap: 16,
+                  }}
+                >
                   {filteredDocuments.map((doc) => {
                     const isSelected = selectedDocuments.includes(doc.id);
                     const isCurrentlyReferenced = currentReferences.includes(doc.id);
@@ -349,44 +347,49 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-                          {/* Checkbox visual */}
-                          <div style={{
-                            width: 24,
-                            height: 24,
-                            border: `2px solid ${isSelected ? '#1a73e8' : '#ccc'}`,
-                            borderRadius: 6,
-                            background: isSelected ? '#1a73e8' : '#fff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            marginTop: 2,
-                          }}>
+                          <div
+                            style={{
+                              width: 24,
+                              height: 24,
+                              border: `2px solid ${isSelected ? '#1a73e8' : '#ccc'}`,
+                              borderRadius: 6,
+                              background: isSelected ? '#1a73e8' : '#fff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              marginTop: 2,
+                            }}
+                          >
                             {isSelected && <span style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>✓</span>}
                           </div>
 
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ 
-                              fontWeight: 600, 
-                              fontSize: 16,
-                              color: '#333',
-                              marginBottom: 8,
-                              wordBreak: 'break-word',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between'
-                            }}>
+                            <div
+                              style={{
+                                fontWeight: 600,
+                                fontSize: 16,
+                                color: '#333',
+                                marginBottom: 8,
+                                wordBreak: 'break-word',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                              }}
+                            >
                               <span style={{ flex: 1 }}>
                                 {doc.filename}
                                 {isCurrentlyReferenced && (
-                                  <span style={{
-                                    marginLeft: 12,
-                                    padding: '4px 8px',
-                                    background: '#e8f5e8',
-                                    color: '#2e7d32',
-                                    fontSize: 12,
-                                    borderRadius: 4,
-                                  }}>
+                                  <span
+                                    style={{
+                                      marginLeft: 12,
+                                      padding: '4px 8px',
+                                      background: '#e8f5e8',
+                                      color: '#2e7d32',
+                                      fontSize: 12,
+                                      borderRadius: 4,
+                                    }}
+                                  >
                                     当前引用
                                   </span>
                                 )}
@@ -419,30 +422,34 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                                 ✏️
                               </button>
                             </div>
-                            <div style={{ 
-                              fontSize: 14, 
-                              color: '#666',
-                              marginBottom: 12,
-                              display: 'flex',
-                              gap: 16,
-                              flexWrap: 'wrap'
-                            }}>
+                            <div
+                              style={{
+                                fontSize: 14,
+                                color: '#666',
+                                marginBottom: 12,
+                                display: 'flex',
+                                gap: 16,
+                                flexWrap: 'wrap',
+                              }}
+                            >
                               <span>ID: {doc.id}</span>
-                              <span>分类: {categories.find(c => c.id === doc.category_id)?.name || doc.category_id}</span>
+                              <span>分类: {categories.find((c) => c.id === doc.category_id)?.name || doc.category_id}</span>
                               <span>版本: v{doc.version}</span>
                               <span>创建: {new Date(doc.created_time).toLocaleDateString()}</span>
                             </div>
-                            <div style={{ 
-                              fontSize: 13, 
-                              color: '#888',
-                              maxHeight: 60,
-                              overflow: 'hidden',
-                              lineHeight: 1.5,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: 'vertical'
-                            }}>
-                              {doc.content.length > 150 ? doc.content.slice(0, 150) + '...' : (doc.content || '(无内容预览)')}
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: '#888',
+                                maxHeight: 60,
+                                overflow: 'hidden',
+                                lineHeight: 1.5,
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                              }}
+                            >
+                              {doc.content.length > 150 ? doc.content.slice(0, 150) + '...' : doc.content || '(无内容预览)'}
                             </div>
                           </div>
                         </div>
@@ -455,20 +462,20 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
           </div>
 
           {/* 右列 - 控制区域 */}
-          <div style={{ 
-            width: '300px', 
-            borderLeft: '1px solid #eee',
-            background: '#f8f9fa',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}>
+          <div
+            style={{
+              width: '300px',
+              borderLeft: '1px solid #eee',
+              background: '#f8f9fa',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+            }}
+          >
             <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: 24, color: '#333' }}>
-                    {type === 'project' ? '编辑项目级引用' : '编辑会话级引用'}
-                  </h2>
+                  <h2 style={{ margin: 0, fontSize: 24, color: '#333' }}>{type === 'project' ? '编辑项目级引用' : '编辑会话级引用'}</h2>
                   <div style={{ fontSize: 16, color: '#666', marginTop: 8 }}>
                     {type === 'project'
                       ? `项目ID: ${projectId} | 当前已选择: ${selectedDocuments.length} 个文档`
@@ -497,15 +504,17 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
               </div>
 
               {hasChanges && (
-                <div style={{
-                  padding: '12px 16px',
-                  background: '#fff3cd',
-                  border: '1px solid #ffeaa7',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  color: '#856404',
-                  marginBottom: '20px'
-                }}>
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    background: '#fff3cd',
+                    border: '1px solid #ffeaa7',
+                    borderRadius: 6,
+                    fontSize: 14,
+                    color: '#856404',
+                    marginBottom: '20px',
+                  }}
+                >
                   <strong>有 {Math.abs(selectedDocuments.length - currentReferences.length)} 项更改待保存</strong>
                 </div>
               )}
@@ -518,11 +527,11 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                   disabled={saving || !hasChanges}
                   style={{
                     padding: '12px 20px',
-                    background: (saving || !hasChanges) ? '#ccc' : '#1a73e8',
+                    background: saving || !hasChanges ? '#ccc' : '#1a73e8',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 8,
-                    cursor: (saving || !hasChanges) ? 'not-allowed' : 'pointer',
+                    cursor: saving || !hasChanges ? 'not-allowed' : 'pointer',
                     fontSize: 16,
                     fontWeight: 500,
                   }}
@@ -566,14 +575,16 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
         </div>
       </div>
 
-      <AddDocumentModal
-        visible={showAddDocumentModal}
-        projectId={projectId}
-        onClose={() => setShowAddDocumentModal(false)}
-        onSuccess={handleAddDocumentSuccess}
-        conversationId={conversationId}
-        defaultCategoryId={activeCategoryId === 'all' ? 0 : activeCategoryId as number}
-      />
+      {showAddDocumentModal && (
+        <AddDocumentModal
+          visible={true}
+          projectId={projectId}
+          onClose={() => setShowAddDocumentModal(false)}
+          onSuccess={handleAddDocumentSuccess}
+          conversationId={conversationId}
+          defaultCategoryId={activeCategoryId === 'all' ? 0 : (activeCategoryId as number)}
+        />
+      )}
 
       {showDocumentDetailModal && selectedDocumentForEdit && (
         <DocumentDetailModal
