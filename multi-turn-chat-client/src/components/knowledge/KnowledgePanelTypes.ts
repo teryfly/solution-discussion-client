@@ -35,6 +35,7 @@ export interface KnowledgeHeaderProps {
   onOpenProjectModal: () => void;
   onOpenConversationModal: () => void;
   onOpenDocumentDetail: (doc: DocumentReference) => void;
+  onAddDocument: () => void;
   references: ReferenceLists;
 }
 

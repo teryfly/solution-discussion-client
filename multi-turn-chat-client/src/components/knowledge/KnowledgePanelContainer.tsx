@@ -5,6 +5,7 @@ import LogsSection from './LogsSection';
 import ProjectReferenceModal from '../ProjectReferenceModal';
 import ConversationReferenceModal from '../ConversationReferenceModal';
 import DocumentDetailModal from '../DocumentDetailModal';
+import AddDocumentModal from '../AddDocumentModal';
 import { 
   getConversationReferencedDocuments, 
   getProjectDocumentReferences,
@@ -35,6 +36,7 @@ const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
   const [showConversationReferenceModal, setShowConversationReferenceModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentReference | null>(null);
   const [showDocumentDetailModal, setShowDocumentDetailModal] = useState(false);
+  const [showAddDocumentModal, setShowAddDocumentModal] = useState(false);
 
   const loadReferencedDocuments = useCallback(async () => {
     if (!conversationId) {
@@ -111,6 +113,15 @@ const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
     onDocumentReferencesChange?.();
   };
 
+  const handleAddDocument = () => {
+    setShowAddDocumentModal(true);
+  };
+
+  const handleAddDocumentSuccess = () => {
+    setShowAddDocumentModal(false);
+    handleRefreshReferences();
+  };
+
   if (!conversationId) {
     return (
       <div style={{ 
@@ -148,6 +159,7 @@ const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
         onOpenProjectModal={() => setShowProjectReferenceModal(true)}
         onOpenConversationModal={() => setShowConversationReferenceModal(true)}
         onOpenDocumentDetail={handleOpenDocumentDetail}
+        onAddDocument={handleAddDocument}
         references={refs}
       />
 
@@ -186,6 +198,16 @@ const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
           onClose={() => { setShowDocumentDetailModal(false); setSelectedDocument(null); }}
           onUpdate={handleRefreshReferences}
           onDocumentChange={handleDocumentChange}
+        />
+      )}
+      {showAddDocumentModal && currentMeta?.projectId && (
+        <AddDocumentModal
+          visible={true}
+          projectId={currentMeta.projectId}
+          onClose={() => setShowAddDocumentModal(false)}
+          onSuccess={handleAddDocumentSuccess}
+          conversationId={conversationId}
+          defaultCategoryId={0}
         />
       )}
     </div>

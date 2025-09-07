@@ -162,6 +162,12 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
     loadData();
   };
 
+  // 处理新增文档按钮点击，传递当前选中的分类ID
+  const handleAddDocumentClick = () => {
+    const categoryId = activeCategoryId === 'all' ? 0 : activeCategoryId;
+    setShowAddDocumentModal(true);
+  };
+
   useEffect(() => {
     if (!visible) return;
     const handler = (e: KeyboardEvent) => {
@@ -292,7 +298,7 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                   </button>
                 )}
                 <button
-                  onClick={() => setShowAddDocumentModal(true)}
+                  onClick={handleAddDocumentClick}
                   style={{
                     padding: '6px 12px',
                     background: '#4caf50',
@@ -524,7 +530,7 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
                   {saving ? '保存中...' : '保存 (Ctrl+Enter)'}
                 </button>
                 <button
-                  onClick={() => setShowAddDocumentModal(true)}
+                  onClick={handleAddDocumentClick}
                   style={{
                     padding: '10px 20px',
                     background: '#4caf50',
@@ -565,6 +571,8 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = ({
         projectId={projectId}
         onClose={() => setShowAddDocumentModal(false)}
         onSuccess={handleAddDocumentSuccess}
+        conversationId={conversationId}
+        defaultCategoryId={activeCategoryId === 'all' ? 0 : activeCategoryId as number}
       />
 
       {showDocumentDetailModal && selectedDocumentForEdit && (

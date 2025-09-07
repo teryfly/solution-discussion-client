@@ -336,7 +336,7 @@ Guidelines:
 - Focus on project management value: traceability of decisions, accountability of action items, and alignment with project goals.  
 - Make the output easy to understand and useful for future reference.  
 ---
-Now start from the first line with summrized title, and then the content without any explanations or notes.
+Now start from the first line with summrized title, and then the content without any explanations, notes, question or next step addvice.
 `,
     "model": "GPT-5",
     "desc": "总结归纳会议，记录与分配任务。",
@@ -358,7 +358,7 @@ Requirements:
 3. Present the information in a concise, professional, and easy-to-read manner, avoiding monotone narration.  
 4. Ensure the summary can serve as a knowledge base document for future reference and team alignment.  
 ---
-Now start from the first line with summrized title, and then the content without any explanations or notes.
+Now start from the first line with summrized title, and then the content without any explanations, notes, question or next step addvice.
 `,
     "model": "GPT-5",
     "desc": "负责记录和归纳讨论要点。",

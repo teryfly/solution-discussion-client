@@ -8,6 +8,7 @@ const KnowledgeHeader: React.FC<KnowledgeHeaderProps> = ({
   onOpenProjectModal,
   onOpenConversationModal,
   onOpenDocumentDetail,
+  onAddDocument,
   references,
 }) => {
   const knowledgeAreaRef = useRef<HTMLDivElement>(null);
@@ -143,16 +144,46 @@ const KnowledgeHeader: React.FC<KnowledgeHeaderProps> = ({
         maxHeight: '60vh',
       }}
     >
-      <h4
+      <div
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           margin: '0 0 16px 0',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          color: '#333',
         }}
       >
-        知识库
-      </h4>
+        <h4
+          style={{
+            margin: 0,
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#333',
+          }}
+        >
+          文档
+        </h4>
+        <button
+          onClick={onAddDocument}
+          style={{
+            background: '#1a73e8',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '50%',
+            width: '24px',
+            height: '24px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 1,
+          }}
+          title="新增文档"
+        >
+          +
+        </button>
+      </div>
 
       {renderRefList('项目级引用', 'project', references.projectReferences)}
       {renderRefList('会话级引用', 'conversation', references.conversationReferences)}
