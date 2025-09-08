@@ -66,11 +66,3 @@ export async function updateDocument(documentId: number, data: {
 }): Promise<any> {
   return httpJson(`/plan/documents/${documentId}`, 'PUT', data);
 }
-
-export async function removeProjectDocumentReference(projectId: number, documentId: number): Promise<void> {
-  await httpJson(`/projects/${projectId}/document-references/${documentId}`, 'DELETE');
-}
-
-export async function removeConversationDocumentReference(conversationId: string, documentId: number): Promise<void> {
-  await httpJson(`/chat/conversations/${conversationId}/document-references/${documentId}`, 'DELETE');
-}

@@ -6,26 +6,24 @@ import ProjectReferenceModal from '../ProjectReferenceModal';
 import ConversationReferenceModal from '../ConversationReferenceModal';
 import DocumentDetailModal from '../DocumentDetailModal';
 import AddDocumentModal from '../AddDocumentModal';
-import { 
-  getConversationReferencedDocuments, 
-  getProjectDocumentReferences,
-  setProjectDocumentReferences,
-  getConversationDocumentReferences,
-  setConversationDocumentReferences
+import {
+  getConversationReferencedDocuments,
 } from '../../api';
 import { DocumentReference } from '../../types';
 
-const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
-  conversationId,
-  currentMeta,
-  onRefresh,
-  executionLogs,
-  onClearLogs,
-  lastExecutionSummary, // reserved for future use
-  autoUpdateCode,
-  onAutoUpdateCodeChange,
-  onDocumentReferencesChange,
-}) => {
+const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = (props) => {
+  const {
+    conversationId,
+    currentMeta,
+    onRefresh,
+    executionLogs,
+    onClearLogs,
+    lastExecutionSummary,
+    autoUpdateCode,
+    onAutoUpdateCodeChange,
+    onDocumentReferencesChange,
+  } = props;
+
   const [refs, setRefs] = useState<ReferenceLists>({
     projectReferences: [],
     conversationReferences: [],
@@ -63,78 +61,35 @@ const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
     setShowDocumentDetailModal(true);
   };
 
-  const handleDocumentChange = async (newDocumentId: number) => {
-    if (!selectedDocument) return;
-    try {
-      const oldDocumentId = selectedDocument.document_id;
-      // project level
-      if (refs.projectReferences.some(ref => ref.document_id === oldDocumentId) && currentMeta?.projectId) {
-        const currentRefs = await getProjectDocumentReferences(currentMeta.projectId);
-        const currentRefIds = currentRefs.map((ref: any) => ref.document_id);
-        const newRefIds = currentRefIds.map((id: number) => (id === oldDocumentId ? newDocumentId : id));
-        await setProjectDocumentReferences(currentMeta.projectId, newRefIds);
-      }
-      // conversation level
-      if (refs.conversationReferences.some(ref => ref.document_id === oldDocumentId)) {
-        const currentRefs = await getConversationDocumentReferences(conversationId);
-        const currentRefIds = currentRefs.map((ref: any) => ref.document_id);
-        const newRefIds = currentRefIds.map((id: number) => (id === oldDocumentId ? newDocumentId : id));
-        await setConversationDocumentReferences(conversationId, newRefIds);
-      }
-      await loadReferencedDocuments();
-      onRefresh?.();
-      onDocumentReferencesChange?.();
-    } catch (e) {
-      alert('更新文档引用关系失败');
-    }
-  };
-
-  const handleQuickRemove = async (doc: DocumentReference, type: 'project' | 'conversation', e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      if (type === 'project' && currentMeta?.projectId) {
-        const currentRefs = await getProjectDocumentReferences(currentMeta.projectId);
-        const ids = currentRefs.map((r: any) => r.document_id).filter((id: number) => id !== doc.document_id);
-        await setProjectDocumentReferences(currentMeta.projectId, ids);
-      } else if (type === 'conversation') {
-        const currentRefs = await getConversationDocumentReferences(conversationId);
-        const ids = currentRefs.map((r: any) => r.document_id).filter((id: number) => id !== doc.document_id);
-        await setConversationDocumentReferences(conversationId, ids);
-      }
-      await loadReferencedDocuments();
-      onRefresh?.();
-      onDocumentReferencesChange?.();
-    } catch {}
-  };
-
-  const handleRefreshReferences = async () => {
-    await loadReferencedDocuments();
+  const handleAddDocumentSuccess = () => {
+    setShowAddDocumentModal(false);
+    loadReferencedDocuments();
     onRefresh?.();
     onDocumentReferencesChange?.();
   };
 
-  const handleAddDocument = () => {
-    setShowAddDocumentModal(true);
-  };
+  const handleQuickRemove = useCallback(async () => {
+    await loadReferencedDocuments();
+    onDocumentReferencesChange?.();
+  }, [loadReferencedDocuments, onDocumentReferencesChange]);
 
-  const handleAddDocumentSuccess = () => {
-    setShowAddDocumentModal(false);
-    handleRefreshReferences();
-  };
+  const handleModalUpdate = useCallback(async () => {
+    await loadReferencedDocuments();
+    onDocumentReferencesChange?.();
+  }, [loadReferencedDocuments, onDocumentReferencesChange]);
 
   if (!conversationId) {
     return (
-      <div style={{ 
-        width: '200px', 
-        borderLeft: '1px solid #ccc', 
-        padding: '10px',
+      <div style={{
+        width: '200px',
+        borderLeft: '1px solid #ccc',
         background: '#f9f9fc',
+        height: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         color: '#888',
-        fontSize: '14px',
-        height: '100vh'
+        fontSize: '14px'
       }}>
         请选择会话
       </div>
@@ -142,16 +97,15 @@ const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
   }
 
   return (
-    <div style={{ 
-      width: '200px', 
-      borderLeft: '1px solid #ccc', 
+    <div style={{
+      width: '200px',
+      borderLeft: '1px solid #ccc',
       background: '#f9f9fc',
       height: '100vh',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
-      {/* Top references area */}
       <KnowledgeHeader
         conversationId={conversationId}
         currentMeta={currentMeta}
@@ -159,11 +113,10 @@ const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
         onOpenProjectModal={() => setShowProjectReferenceModal(true)}
         onOpenConversationModal={() => setShowConversationReferenceModal(true)}
         onOpenDocumentDetail={handleOpenDocumentDetail}
-        onAddDocument={handleAddDocument}
+        onAddDocument={() => setShowAddDocumentModal(true)}
         references={refs}
       />
 
-      {/* Bottom logs area */}
       <div style={{ flex: 1, padding: '10px', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
         <LogsSection
           executionLogs={executionLogs}
@@ -173,33 +126,34 @@ const KnowledgePanelContainer: React.FC<KnowledgePanelProps> = ({
         />
       </div>
 
-      {/* Modals */}
       {showProjectReferenceModal && currentMeta?.projectId && (
         <ProjectReferenceModal
           visible={true}
           projectId={currentMeta.projectId}
           onClose={() => setShowProjectReferenceModal(false)}
-          onUpdate={handleRefreshReferences}
+          onUpdate={handleModalUpdate}
         />
       )}
+
       {showConversationReferenceModal && currentMeta?.projectId && (
         <ConversationReferenceModal
           visible={true}
           conversationId={conversationId}
           projectId={currentMeta.projectId}
           onClose={() => setShowConversationReferenceModal(false)}
-          onUpdate={handleRefreshReferences}
+          onUpdate={handleModalUpdate}
         />
       )}
+
       {showDocumentDetailModal && selectedDocument && (
         <DocumentDetailModal
           visible={true}
           document={selectedDocument}
           onClose={() => { setShowDocumentDetailModal(false); setSelectedDocument(null); }}
-          onUpdate={handleRefreshReferences}
-          onDocumentChange={handleDocumentChange}
+          onUpdate={handleModalUpdate}
         />
       )}
+
       {showAddDocumentModal && currentMeta?.projectId && (
         <AddDocumentModal
           visible={true}

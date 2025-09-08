@@ -6,10 +6,11 @@ export const AddDocumentForm: React.FC<{
   errors: Record<string, string>;
   categories: { id: number; name: string }[];
   onChange: (field: keyof FormData, value: string | number) => void;
-  onGenerate: (type: 'project' | 'agile') => void;
+  onGenerate?: (type: 'project' | 'agile') => void;
   gen: GenerateState;
   contentRef: React.RefObject<HTMLTextAreaElement>;
-}> = ({ formData, errors, categories, onChange, onGenerate, gen, contentRef }) => {
+  showGenerateButtons?: boolean; // 新增：是否显示“生成项目纪要/生成敏捷文档”按钮
+}> = ({ formData, errors, categories, onChange, onGenerate, gen, contentRef, showGenerateButtons = true }) => {
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
       <div
@@ -88,41 +89,49 @@ export const AddDocumentForm: React.FC<{
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexShrink: 0 }}>
-              <label style={{ fontWeight: 600, fontSize: 16 }}>内容 *</label>
-              <button
-                onClick={() => onGenerate('project')}
-                disabled={gen.generating}
-                style={{
-                  padding: '6px 12px',
-                  background: gen.generating && gen.type === 'project' ? '#ccc' : '#4caf50',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: gen.generating ? 'not-allowed' : 'pointer',
-                  fontSize: 12,
-                  fontWeight: 500,
-                }}
-              >
-                {gen.generating && gen.type === 'project' ? '生成中...' : '生成项目纪要'}
-              </button>
-              <button
-                onClick={() => onGenerate('agile')}
-                disabled={gen.generating}
-                style={{
-                  padding: '6px 12px',
-                  background: gen.generating && gen.type === 'agile' ? '#ccc' : '#2196f3',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: gen.generating ? 'not-allowed' : 'pointer',
-                  fontSize: 12,
-                  fontWeight: 500,
-                }}
-              >
-                {gen.generating && gen.type === 'agile' ? '生成中...' : '生成敏捷文档'}
-              </button>
-            </div>
+            {showGenerateButtons && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexShrink: 0 }}>
+                <label style={{ fontWeight: 600, fontSize: 16 }}>内容 *</label>
+                <button
+                  onClick={() => onGenerate && onGenerate('project')}
+                  disabled={gen.generating}
+                  style={{
+                    padding: '6px 12px',
+                    background: gen.generating && gen.type === 'project' ? '#ccc' : '#4caf50',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: gen.generating ? 'not-allowed' : 'pointer',
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  {gen.generating && gen.type === 'project' ? '生成中...' : '生成项目纪要'}
+                </button>
+                <button
+                  onClick={() => onGenerate && onGenerate('agile')}
+                  disabled={gen.generating}
+                  style={{
+                    padding: '6px 12px',
+                    background: gen.generating && gen.type === 'agile' ? '#ccc' : '#2196f3',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: gen.generating ? 'not-allowed' : 'pointer',
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  {gen.generating && gen.type === 'agile' ? '生成中...' : '生成敏捷文档'}
+                </button>
+              </div>
+            )}
+
+            {!showGenerateButtons && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexShrink: 0 }}>
+                <label style={{ fontWeight: 600, fontSize: 16 }}>内容 *</label>
+              </div>
+            )}
 
             <textarea
               ref={contentRef}

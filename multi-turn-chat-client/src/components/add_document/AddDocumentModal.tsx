@@ -39,6 +39,10 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = (props) => {
 
   if (!visible) return null;
 
+  // 入口来源判断：当 props.fromReference === true 时隐藏生成按钮
+  // 由调用方传入（引用页面“+新增文档”设置为 true；D1 顶部“+”不传/为 false）
+  const showGenerateButtons = props.fromReference ? false : true;
+
   return (
     <div
       style={{
@@ -75,9 +79,10 @@ const AddDocumentModal: React.FC<AddDocumentModalProps> = (props) => {
               handleInputChange(field, value);
             }
           }}
-          onGenerate={(t) => handleGenerate(t)}
+          onGenerate={showGenerateButtons ? (t) => handleGenerate(t) : undefined}
           gen={gen}
           contentRef={contentTextareaRef}
+          showGenerateButtons={showGenerateButtons}
         />
 
         <ModalFooter onCancel={onClose} onSave={handleSave} disabled={saving || gen.generating} saving={saving} />

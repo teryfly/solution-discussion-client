@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { DocumentReference } from '../types';
 import { getDocumentDetail, updateDocument } from '../api';
 
@@ -34,7 +36,7 @@ const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
   useEffect(() => {
     const lineEl = lineColRef.current;
     const contEl = contentColRef.current;
-    if (!lineEl || !contEl) return;
+    if (!lineEl || !contEl || editMode) return; // 编辑模式下不需要同步滚动
 
     const onContentScroll = () => {
       if (isSyncingRef.current) return;
@@ -342,59 +344,128 @@ const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                 minHeight: 0,
               }}
             >
-              {/* Line numbers column */}
-              <div
-                ref={lineColRef}
-                style={{
-                  userSelect: 'none',
-                  background: '#f0f0f6',
-                  color: '#aaa',
-                  textAlign: 'right',
-                  padding: '12px 8px 12px 6px',
-                  borderRight: '1px solid #e3e3e8',
-                  minWidth: 60,
-                  maxWidth: 60,
-                  fontFamily: codeFontFamily,
-                  fontSize: 12,
-                  lineHeight: 1.55,
-                  letterSpacing: '0.02em',
-                  flexShrink: 0,
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                }}
-                aria-hidden="true"
-              >
-                {lineNumbers.map((n) => (
-                  <div key={n}>{n}</div>
-                ))}
-              </div>
+              {/* Line numbers column - 只在原始代码模式下显示 */}
+              {filename && (filename.endsWith('.md') || filename.endsWith('.txt')) ? null : (
+                <div
+                  ref={lineColRef}
+                  style={{
+                    userSelect: 'none',
+                    background: '#f0f0f6',
+                    color: '#aaa',
+                    textAlign: 'right',
+                    padding: '12px 8px 12px 6px',
+                    borderRight: '1px solid #e3e3e8',
+                    minWidth: 60,
+                    maxWidth: 60,
+                    fontFamily: codeFontFamily,
+                    fontSize: 12,
+                    lineHeight: 1.55,
+                    letterSpacing: '0.02em',
+                    flexShrink: 0,
+                    overflowY: 'hidden', // 修复：隐藏行号列的滚动条
+                    overflowX: 'hidden',
+                  }}
+                  aria-hidden="true"
+                >
+                  {lineNumbers.map((n) => (
+                    <div key={n}>{n}</div>
+                  ))}
+                </div>
+              )}
 
-              {/* Raw content (monospace, preserves ASCII alignment) */}
+              {/* Content column - 支持Markdown渲染 */}
               <div
                 ref={contentColRef}
                 style={{
                   flex: 1,
                   overflow: 'auto',
                   padding: 12,
-                  fontFamily: codeFontFamily,
                   fontSize: 13,
                   lineHeight: 1.55,
-                  whiteSpace: 'pre',
-                  tabSize: 4 as any,
-                  MozTabSize: 4 as any,
                 }}
               >
-                <pre
-                  style={{
-                    margin: 0,
-                    background: 'transparent',
-                    border: 'none',
-                    padding: 0,
-                    whiteSpace: 'pre',
-                  }}
-                >
-                  <code style={{ fontFamily: codeFontFamily }}>{content}</code>
-                </pre>
+                {filename && filename.endsWith('.md') ? (
+                  // Markdown渲染模式
+                  <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ node, inline, className, children, ...props }) {
+                          return (
+                            <code
+                              className={className}
+                              style={{
+                                backgroundColor: inline ? '#f1f3f4' : 'transparent',
+                                border: inline ? '1px solid #ddd' : 'none',
+                                padding: inline ? '2px 4px' : '0',
+                                borderRadius: inline ? '3px' : '0',
+                                fontSize: inline ? '0.9em' : '1em',
+                                fontFamily: codeFontFamily,
+                              }}
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                        pre({ children }) {
+                          return (
+                            <pre
+                              style={{
+                                background: '#f8f9fa',
+                                border: '1px solid #e9ecef',
+                                borderRadius: 6,
+                                padding: 12,
+                                overflow: 'auto',
+                                fontFamily: codeFontFamily,
+                                fontSize: 12,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {children}
+                            </pre>
+                          );
+                        },
+                        h1: ({ children }) => <h1 style={{ fontSize: '2em', fontWeight: 600, marginBottom: '0.5em' }}>{children}</h1>,
+                        h2: ({ children }) => <h2 style={{ fontSize: '1.5em', fontWeight: 600, marginBottom: '0.5em' }}>{children}</h2>,
+                        h3: ({ children }) => <h3 style={{ fontSize: '1.25em', fontWeight: 600, marginBottom: '0.5em' }}>{children}</h3>,
+                        p: ({ children }) => <p style={{ marginBottom: '1em', lineHeight: 1.6 }}>{children}</p>,
+                        blockquote: ({ children }) => (
+                          <blockquote style={{ 
+                            borderLeft: '4px solid #dfe2e5', 
+                            paddingLeft: '16px', 
+                            margin: '16px 0',
+                            color: '#6a737d',
+                            fontStyle: 'italic'
+                          }}>
+                            {children}
+                          </blockquote>
+                        ),
+                        ul: ({ children }) => <ul style={{ paddingLeft: '2em', marginBottom: '1em' }}>{children}</ul>,
+                        ol: ({ children }) => <ol style={{ paddingLeft: '2em', marginBottom: '1em' }}>{children}</ol>,
+                        li: ({ children }) => <li style={{ marginBottom: '0.25em' }}>{children}</li>,
+                      }}
+                    >
+                      {content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  // 原始文本模式（等宽字体）
+                  <pre
+                    style={{
+                      margin: 0,
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      whiteSpace: 'pre',
+                      fontFamily: codeFontFamily,
+                      fontSize: 13,
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    <code style={{ fontFamily: codeFontFamily }}>{content}</code>
+                  </pre>
+                )}
               </div>
             </div>
           )}
