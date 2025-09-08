@@ -6,11 +6,20 @@ export const AddDocumentForm: React.FC<{
   errors: Record<string, string>;
   categories: { id: number; name: string }[];
   onChange: (field: keyof FormData, value: string | number) => void;
-  onGenerate?: (type: 'project' | 'agile') => void;
+  onGenerate?: () => void;
   gen: GenerateState;
   contentRef: React.RefObject<HTMLTextAreaElement>;
-  showGenerateButtons?: boolean; // 新增：是否显示“生成项目纪要/生成敏捷文档”按钮
-}> = ({ formData, errors, categories, onChange, onGenerate, gen, contentRef, showGenerateButtons = true }) => {
+  showGenerateButtons?: boolean;
+}> = ({
+  formData,
+  errors,
+  categories,
+  onChange,
+  onGenerate,
+  gen,
+  contentRef,
+  showGenerateButtons = true
+}) => {
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
       <div
@@ -59,7 +68,9 @@ export const AddDocumentForm: React.FC<{
                 placeholder="请输入文件名，如：项目需求文档.md"
                 disabled={gen.generating}
               />
-              {errors.filename && <div style={{ color: '#f44336', fontSize: 14, marginTop: 8 }}>{errors.filename}</div>}
+              {errors.filename && (
+                <div style={{ color: '#f44336', fontSize: 14, marginTop: 8 }}>{errors.filename}</div>
+              )}
             </div>
 
             <div style={{ flex: 1 }}>
@@ -84,20 +95,30 @@ export const AddDocumentForm: React.FC<{
                   </option>
                 ))}
               </select>
-              {errors.category_id && <div style={{ color: '#f44336', fontSize: 14, marginTop: 8 }}>{errors.category_id}</div>}
+              {errors.category_id && (
+                <div style={{ color: '#f44336', fontSize: 14, marginTop: 8 }}>{errors.category_id}</div>
+              )}
             </div>
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {showGenerateButtons && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexShrink: 0 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginBottom: 12,
+                  flexShrink: 0,
+                }}
+              >
                 <label style={{ fontWeight: 600, fontSize: 16 }}>内容 *</label>
                 <button
-                  onClick={() => onGenerate && onGenerate('project')}
+                  onClick={() => onGenerate && onGenerate()}
                   disabled={gen.generating}
                   style={{
                     padding: '6px 12px',
-                    background: gen.generating && gen.type === 'project' ? '#ccc' : '#4caf50',
+                    background: gen.generating ? '#ccc' : '#1a73e8',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 6,
@@ -106,29 +127,21 @@ export const AddDocumentForm: React.FC<{
                     fontWeight: 500,
                   }}
                 >
-                  {gen.generating && gen.type === 'project' ? '生成中...' : '生成项目纪要'}
-                </button>
-                <button
-                  onClick={() => onGenerate && onGenerate('agile')}
-                  disabled={gen.generating}
-                  style={{
-                    padding: '6px 12px',
-                    background: gen.generating && gen.type === 'agile' ? '#ccc' : '#2196f3',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    cursor: gen.generating ? 'not-allowed' : 'pointer',
-                    fontSize: 12,
-                    fontWeight: 500,
-                  }}
-                >
-                  {gen.generating && gen.type === 'agile' ? '生成中...' : '生成敏捷文档'}
+                  {gen.generating ? '生成中...' : '根据会话生成'}
                 </button>
               </div>
             )}
 
             {!showGenerateButtons && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexShrink: 0 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginBottom: 12,
+                  flexShrink: 0,
+                }}
+              >
                 <label style={{ fontWeight: 600, fontSize: 16 }}>内容 *</label>
               </div>
             )}

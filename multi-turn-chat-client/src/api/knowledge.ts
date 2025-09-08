@@ -66,3 +66,20 @@ export async function updateDocument(documentId: number, data: {
 }): Promise<any> {
   return httpJson(`/plan/documents/${documentId}`, 'PUT', data);
 }
+
+/**
+ * 获取分类详情（包含 prompt_template 和 summary_model）
+ * GET /v1/plan/categories/{category_id}
+ */
+export async function getPlanCategoryDetail(categoryId: number): Promise<{
+  id: number;
+  name: string;
+  prompt_template?: string;
+  message_method?: string;
+  auto_save_category_id?: number | null;
+  is_builtin?: boolean;
+  created_time?: string;
+  summary_model?: string;
+}> {
+  return httpGet(`/plan/categories/${categoryId}`);
+}

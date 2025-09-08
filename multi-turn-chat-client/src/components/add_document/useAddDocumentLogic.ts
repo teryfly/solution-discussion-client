@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BASE_URL, API_KEY, ROLE_CONFIGS } from '../../config';
-import { getMessages, createPlanDocument } from '../../api';
+import { BASE_URL, API_KEY } from '../../config';
+import { getMessages, createPlanDocument, getPlanCategoryDetail } from '../../api';
 import usePlanCategories from '../../hooks/usePlanCategories';
-import type { AddDocumentModalProps, FormData, GenerateState, GenerateType } from './types';
+import type { AddDocumentModalProps, FormData, GenerateState } from './types';
 
 export function useAddDocumentLogic(props: AddDocumentModalProps) {
   const { visible, defaultCategoryId, conversationId, projectId, onClose, onSuccess } = props;
@@ -14,11 +14,9 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
   const [gen, setGen] = useState<GenerateState>({ generating: false, type: '' });
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 复用：两个入口共享逻辑
-  // 入口分类默认值：只有通过“编辑引用弹窗+新增文档”且 TAB 为具体分类时(defaultCategoryId>0)才预选分类，否则为“请选择”(0)
   const initialCategory = useMemo(() => {
     if (typeof defaultCategoryId === 'number' && defaultCategoryId > 0) return defaultCategoryId;
-    return 0; // 其余入口均选择“请选择”
+    return 0;
   }, [defaultCategoryId]);
 
   const resetForm = () => {
@@ -32,7 +30,6 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialCategory]);
 
-  // 滚动到底部
   const scrollToBottom = () => {
     if (contentTextareaRef.current) {
       contentTextareaRef.current.scrollTop = contentTextareaRef.current.scrollHeight;
@@ -79,45 +76,58 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
     }
   };
 
-  // 生成按钮：两个入口都可用（会话ID可选）
-  const handleGenerate = async (type: GenerateType) => {
+  // 单一入口：“根据会话生成”
+  const handleGenerate = async () => {
     if (!conversationId) {
       alert('无法获取当前会话内容');
       return;
     }
-    setGen({ generating: true, type });
+    if (!formData.category_id || formData.category_id === 0) {
+      alert('请先选择分类');
+      return;
+    }
+    setGen({ generating: true, type: 'project' }); // 用于“生成中...”展示
 
     try {
-      // 拼接会话内容（去除 system）
+      // 1) 获取整个会话上下文（去除 system），拼接为单条“用户提问”
       const messages = await getMessages(conversationId);
-      const conversationContent = (messages || [])
+      const fullConversationAsUserQuestion = (messages || [])
         .filter((m: any) => m.role !== 'system')
-        .map((m: any) => `${m.role === 'user' ? '用户' : '助手'}: ${m.content}`)
+        .map((m: any, idx: number) => `${m.role === 'user' ? '用户' : '助手'}(${idx + 1}): ${m.content}`)
         .join('\n\n')
         .trim();
 
-      if (!conversationContent) {
+      if (!fullConversationAsUserQuestion) {
         alert('当前会话无有效内容');
         setGen({ generating: false, type: '' });
         return;
       }
 
-      const roleKey = type === 'project' ? '项目经理' : '敏捷教练';
-      const role = ROLE_CONFIGS[roleKey];
-      if (!role) {
-        alert('未找到对应角色配置');
-        setGen({ generating: false, type: '' });
-        return;
+      // 2) 获取分类详情：prompt_template + summary_model
+      let model = '';
+      let promptTemplate = '';
+      try {
+        const category = await getPlanCategoryDetail(formData.category_id);
+        promptTemplate = category?.prompt_template || '';
+        model = category?.summary_model || '';
+      } catch (e: any) {
+        if (String(e?.message || '').includes('404')) {
+          setErrors({ submit: '分类不存在（404）' });
+          setGen({ generating: false, type: '' });
+          return;
+        }
+        console.warn('获取分类详情失败:', e);
       }
 
+      // 3) 调用后端流式API：system 使用 prompt_template，user 使用“完整会话上下文”
       const res = await fetch(`${BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
         body: JSON.stringify({
-          model: role.model,
+          model, // 正确使用分类返回的 summary_model
           messages: [
-            { role: 'system', content: role.prompt },
-            { role: 'user', content: conversationContent },
+            ...(promptTemplate ? [{ role: 'system', content: promptTemplate }] : []),
+            { role: 'user', content: fullConversationAsUserQuestion },
           ],
           stream: true,
         }),
@@ -152,27 +162,21 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
 
             accumulated += delta;
 
-            // 2、确保收到换行符后再写入第一行文件名
+            // 第一行作为文件名（收到首个换行后生效）
             if (!filenameSet && accumulated.includes('\n')) {
               const parts = accumulated.split('\n');
               const firstLine = parts[0].trim().replace(/^#+\s*/, '');
               const rest = parts.slice(1).join('\n').trim();
-              setFormData(prev => ({ ...prev, filename: firstLine, content: rest }));
+              setFormData(prev => ({ ...prev, filename: firstLine || prev.filename, content: rest }));
               filenameSet = true;
               setTimeout(scrollToBottom, 10);
             } else if (filenameSet) {
               const parts = accumulated.split('\n');
               const rest = parts.slice(1).join('\n').trim();
               setContentAndScroll(rest);
-            } else {
-              // 尚未收到首个换行，提示文案
-              setFormData(prev => ({
-                ...prev,
-                content: prev.content || '',
-              }));
             }
           } catch {
-            // ignore parse error
+            // 忽略单行解析错误
           }
         }
       }
