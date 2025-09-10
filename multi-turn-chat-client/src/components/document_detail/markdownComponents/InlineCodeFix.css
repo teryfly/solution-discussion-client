@@ -1,0 +1,79 @@
+/*
+  This file provides highly specific CSS rules to force inline code blocks
+  to render correctly inside the document viewer, overriding any conflicting
+  global styles.
+*/
+
+/* Scope all rules to the markdown viewer to prevent side effects. */
+.doc-md-root {
+  font-family: system-ui, -apple-system, sans-serif;
+  text-align: left;
+  line-height: normal;
+  font-size: initial;
+  font-weight: normal;
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure paragraphs within the viewer behave as standard blocks. */
+.doc-md-root p {
+  display: block !important;
+  width: 100% !important;
+  flex-grow: 0 !important;
+  margin-bottom: 1em !important;
+}
+
+/*
+  CORE FIX: Target any `code` element that is NOT a direct child of a `pre` tag.
+  This robustly identifies inline code and resets all properties that could
+  cause it to break the line flow.
+*/
+.doc-md-root :not(pre) > code {
+  /* Layout */
+  display: inline !important;
+  position: static !important;
+  float: none !important;
+  clear: none !important;
+  
+  /* Sizing */
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 2px 4px !important;
+
+  /* Flex/Grid child properties reset */
+  flex: none !important;
+  flex-grow: 0 !important;
+  flex-shrink: 0 !important;
+  flex-basis: auto !important;
+  align-self: auto !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  
+  /* Text and Whitespace */
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  vertical-align: baseline !important;
+  text-align: left !important;
+
+  /* Appearance */
+  background-color: #f1f3f4 !important;
+  border: 1px solid #ddd !important;
+  border-radius: 3px !important;
+  font-size: 0.9em !important;
+}
+
+/* Restore block behavior for code inside <pre> tags */
+.doc-md-root pre > code {
+  display: block !important;
+  white-space: pre !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 10px 12px !important;
+  background-color: #fafafa !important;
+}
