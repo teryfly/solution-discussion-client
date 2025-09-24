@@ -99,7 +99,7 @@ const PlantUMLViewer: React.FC<PlantUMLViewerProps> = ({ content, codeFontFamily
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [usePrefixHeader, setUsePrefixHeader] = useState<boolean>(false); // 动态尝试是否需要前缀
 
-  const plantumlServer = 'https://www.plantuml.com/plantuml/svg';
+  const plantumlServer = 'http://192.168.120.221:30008/svg';
   const uml = (content || '').trim();
 
   useEffect(() => {

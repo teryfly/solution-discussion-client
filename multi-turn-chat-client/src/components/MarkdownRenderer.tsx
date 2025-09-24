@@ -2,6 +2,9 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CodeBlock from './CodeBlock';
+import MessagePlantUMLRenderer from './MessagePlantUMLRenderer';
+import { containsPlantUML } from '../utils/plantUMLUtils';
+
 // 过滤掉所有空行
 function removeBlankLines(text: string): string {
   return text
@@ -9,6 +12,7 @@ function removeBlankLines(text: string): string {
     .filter(line => line.trim() !== '')
     .join('\n');
 }
+
 // 检测原始代码是否来自 ``` 三反引号块
 function isTripleBacktickBlock(node: any, content: string): boolean {
   if (!node?.position || !content) return false;
@@ -20,8 +24,15 @@ function isTripleBacktickBlock(node: any, content: string): boolean {
   const rawSnippet = content.slice(startOffset, endOffset);
   return rawSnippet.trim().startsWith('```');
 }
+
 const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
   const noBlankContent = removeBlankLines(content);
+  
+  // 如果内容包含PlantUML，使用PlantUML渲染器
+  if (containsPlantUML(noBlankContent)) {
+    return <MessagePlantUMLRenderer content={noBlankContent} />;
+  }
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -70,4 +81,5 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
     </ReactMarkdown>
   );
 };
+
 export default MarkdownRenderer;
