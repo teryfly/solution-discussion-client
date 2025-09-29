@@ -1,5 +1,6 @@
 import React from 'react';
 import type { FormData, GenerateState } from './types';
+import DualPaneEditor from '../document_detail/DualPaneEditor';
 
 export const AddDocumentForm: React.FC<{
   formData: FormData;
@@ -146,27 +147,19 @@ export const AddDocumentForm: React.FC<{
               </div>
             )}
 
-            <textarea
-              ref={contentRef}
-              value={formData.content}
-              onChange={(e) => onChange('content', e.target.value)}
-              style={{
-                flex: 1,
-                minHeight: 0,
-                padding: '16px',
-                border: `2px solid ${errors.content ? '#f44336' : '#e0e0e0'}`,
-                borderRadius: 8,
-                fontSize: 15,
-                fontFamily: 'monospace',
-                lineHeight: 1.6,
-                resize: 'none',
-                boxSizing: 'border-box',
-                outline: 'none',
-                overflowY: 'auto',
-              }}
-              placeholder={gen.generating ? '正在梳理会话内容...' : '请输入文档内容，支持Markdown格式'}
-              disabled={gen.generating}
-            />
+            {/* 使用双栏编辑器 */}
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <DualPaneEditor
+                content={formData.content}
+                filename={formData.filename}
+                onContentChange={(content) => onChange('content', content)}
+                placeholder={gen.generating ? '正在梳理会话内容...' : '请输入文档内容，支持Markdown格式'}
+                disabled={gen.generating}
+                showPreview={true}
+                initialLeftRatio={0.4}
+              />
+            </div>
+            
             {errors.content && (
               <div style={{ color: '#f44336', fontSize: 14, marginTop: 8, flexShrink: 0 }}>{errors.content}</div>
             )}

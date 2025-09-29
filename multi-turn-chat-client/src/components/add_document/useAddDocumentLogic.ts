@@ -30,15 +30,9 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialCategory]);
 
-  const scrollToBottom = () => {
-    if (contentTextareaRef.current) {
-      contentTextareaRef.current.scrollTop = contentTextareaRef.current.scrollHeight;
-    }
-  };
-
+  // 不再需要手动滚动，双栏编辑器会自动处理
   const setContentAndScroll = (content: string) => {
     setFormData(prev => ({ ...prev, content }));
-    setTimeout(scrollToBottom, 10);
   };
 
   const handleInputChange = (field: keyof FormData, value: string | number) => {
@@ -76,7 +70,7 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
     }
   };
 
-  // 单一入口：“根据会话生成”
+  // 单一入口："根据会话生成"
   const handleGenerate = async () => {
     if (!conversationId) {
       alert('无法获取当前会话内容');
@@ -86,10 +80,10 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
       alert('请先选择分类');
       return;
     }
-    setGen({ generating: true, type: 'project' }); // 用于“生成中...”展示
+    setGen({ generating: true, type: 'project' }); // 用于"生成中..."展示
 
     try {
-      // 1) 获取整个会话上下文（去除 system），拼接为单条“用户提问”
+      // 1) 获取整个会话上下文（去除 system），拼接为单条"用户提问"
       const messages = await getMessages(conversationId);
       const fullConversationAsUserQuestion = (messages || [])
         .filter((m: any) => m.role !== 'system')
@@ -119,7 +113,7 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
         console.warn('获取分类详情失败:', e);
       }
 
-      // 3) 调用后端流式API：system 使用 prompt_template，user 使用“完整会话上下文”
+      // 3) 调用后端流式API：system 使用 prompt_template，user 使用"完整会话上下文"
       const res = await fetch(`${BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
@@ -169,7 +163,6 @@ export function useAddDocumentLogic(props: AddDocumentModalProps) {
               const rest = parts.slice(1).join('\n').trim();
               setFormData(prev => ({ ...prev, filename: firstLine || prev.filename, content: rest }));
               filenameSet = true;
-              setTimeout(scrollToBottom, 10);
             } else if (filenameSet) {
               const parts = accumulated.split('\n');
               const rest = parts.slice(1).join('\n').trim();
