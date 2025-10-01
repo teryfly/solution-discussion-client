@@ -229,8 +229,8 @@ const PlantUMLImage: React.FC<PlantUMLImageProps> = ({ umlCode, onError }) => {
   const [copyCodeFeedback, setCopyCodeFeedback] = useState(false);
   const [copyImageFeedback, setCopyImageFeedback] = useState(false);
 
-  //const plantumlServer = 'https://www.plantuml.com/plantuml/svg';
-  const plantumlServer = 'http://192.168.120.221:30008/svg';
+  const plantumlServer = 'https://www.plantuml.com/plantuml/svg';
+  //const plantumlServer = 'http://192.168.120.221:30008/svg';
   const { getCurrentProject } = useProject();
   const currentProject = getCurrentProject();
 
