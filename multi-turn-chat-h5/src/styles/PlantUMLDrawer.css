@@ -1,0 +1,46 @@
+.plantuml-drawer {
+  top: 56px;
+  bottom: 140px;
+}
+
+.plantuml-drawer .drawer-body {
+  background: #f8f9fa;
+}
+
+.uml-icon {
+  font-size: 20px;
+}
+
+.uml-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 20px;
+}
+
+.uml-container img {
+  max-width: 100%;
+  height: auto;
+  transition: width 0.3s ease;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.uml-code-fallback {
+  width: 100%;
+  padding: 16px;
+  background: #282c34;
+  border-radius: 8px;
+  color: #abb2bf;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+.uml-code-fallback pre {
+  margin: 0;
+  white-space: pre-wrap;
+}

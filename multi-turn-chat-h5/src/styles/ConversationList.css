@@ -20,6 +20,7 @@
   border-radius: 20px;
   font-size: 14px;
   background: #f8f9fa;
+  color: #000000;
   transition: all 0.2s ease;
 }
 
@@ -27,6 +28,11 @@
   outline: none;
   border-color: #1a73e8;
   background: #ffffff;
+  color: #000000;
+}
+
+.search-input::placeholder {
+  color: #9aa0a6;
 }
 
 .conversation-list {

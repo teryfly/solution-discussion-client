@@ -7,6 +7,7 @@ import { ConversationDetail } from '../pages/ConversationDetail';
 import { ProjectList } from '../pages/ProjectList';
 import { ProjectEdit } from '../pages/ProjectEdit';
 import { ExecutionLogPage } from '../pages/ExecutionLog';
+import { MarkdownPreview } from '../pages/MarkdownPreview';
 
 export const router = createBrowserRouter([
   {
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       {
         path: 'logs',
         element: <ExecutionLogPage />,
+      },
+      {
+        path: 'markdown-preview',
+        element: <MarkdownPreview />,
       },
     ],
   },

@@ -40,6 +40,11 @@ export const ConversationList: React.FC = () => {
     conv.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const getRoleLabel = (role?: string): string => {
+    // 直接返回 API 中的 assistance_role 值，如果为空则返回默认值
+    return role || '通用';
+  };
+
   const handleCreateConversation = async (data: {
     model: string;
     role: string;
@@ -109,9 +114,9 @@ export const ConversationList: React.FC = () => {
                 </span>
               </div>
               <div className="conversation-meta">
-                {currentProject && (
-                  <span className="conversation-project">[{currentProject.name}]</span>
-                )}
+                <span className="conversation-project">
+                  [{currentProject?.name || '未知项目'}] - {getRoleLabel(conv.assistance_role)}
+                </span>
                 <span className="conversation-time">
                   {formatTime(conv.updated_at || conv.created_at)}
                 </span>
