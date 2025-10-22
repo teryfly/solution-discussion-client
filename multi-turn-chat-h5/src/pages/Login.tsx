@@ -33,16 +33,21 @@ export const Login: React.FC = () => {
       // Mock login - in real app, call API
       await new Promise((resolve) => setTimeout(resolve, 1000));
       
-      const mockToken = 'mock_token_' + Date.now();
+      // 生成符合后端要求的 token (必须以 sk-test 或 poe-sk 开头)
+      const mockToken = `sk-test-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+      
+      // 重要：先设置 token，再设置 user
+      setAuthToken(mockToken);
+      
       const mockUser = {
         id: '1',
         username,
         token: mockToken,
       };
 
-      setAuthToken(mockToken);
       setUser(mockUser);
       
+      console.log('✅ 登录成功，Token:', mockToken);
       showToast({ message: '登录成功', type: 'success' });
       navigate('/');
     } catch (error: any) {
@@ -95,6 +100,12 @@ export const Login: React.FC = () => {
           <button type="submit" className="btn-login" disabled={loading}>
             {loading ? '登录中...' : '登录'}
           </button>
+
+          <div className="login-hint">
+            <small style={{ color: '#5f6368', marginTop: '12px', display: 'block', textAlign: 'center' }}>
+              💡 提示：首次使用请直接输入任意用户名和密码登录
+            </small>
+          </div>
         </form>
       </div>
     </div>

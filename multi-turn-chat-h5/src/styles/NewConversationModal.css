@@ -45,6 +45,48 @@
   padding: 20px;
 }
 
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+.form-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #5f6368;
+}
+
 .role-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -89,4 +131,55 @@
   padding: 20px;
   border-top: 1px solid #e8eaed;
   justify-content: flex-end;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: #1a73e8;
+  color: #ffffff;
+}
+
+.btn-primary:active {
+  background: #1557b0;
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: #1a73e8;
+  border: 1px solid #1a73e8;
+}
+
+.btn-secondary:active {
+  background: rgba(26, 115, 232, 0.1);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

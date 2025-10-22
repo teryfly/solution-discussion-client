@@ -16,7 +16,11 @@ export const ProjectEdit: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     dev_environment: 'Development',
-    ai_work_dir: '',
+    grpc_server_address: '',
+    llm_model: 'GPT-4.1',
+    llm_url: 'http://43.132.224.225:8000/v1/chat/completions',
+    git_work_dir: '/git_workspace',
+    ai_work_dir: '/aiWorkDir',
   });
 
   const isEdit = id && id !== 'new';
@@ -34,7 +38,11 @@ export const ProjectEdit: React.FC = () => {
       setFormData({
         name: project.name,
         dev_environment: project.dev_environment || 'Development',
-        ai_work_dir: project.ai_work_dir || '',
+        grpc_server_address: project.grpc_server_address || '',
+        llm_model: project.llm_model || 'GPT-4.1',
+        llm_url: project.llm_url || 'http://43.132.224.225:8000/v1/chat/completions',
+        git_work_dir: project.git_work_dir || '/git_workspace',
+        ai_work_dir: project.ai_work_dir || '/aiWorkDir',
       });
     } catch (error: any) {
       showToast({ message: error.message, type: 'error' });
@@ -49,6 +57,16 @@ export const ProjectEdit: React.FC = () => {
 
     if (!formData.name || formData.name.length < 2) {
       showToast({ message: '项目名称至少2个字符', type: 'error' });
+      return;
+    }
+
+    if (!formData.dev_environment) {
+      showToast({ message: '请选择开发环境', type: 'error' });
+      return;
+    }
+
+    if (!formData.grpc_server_address) {
+      showToast({ message: '请输入 gRPC 服务器地址', type: 'error' });
       return;
     }
 
@@ -99,7 +117,7 @@ export const ProjectEdit: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="project-form">
         <div className="form-section">
-          <label className="form-label">项目名称</label>
+          <label className="form-label">项目名称 *</label>
           <input
             type="text"
             className="form-input"
@@ -111,25 +129,76 @@ export const ProjectEdit: React.FC = () => {
         </div>
 
         <div className="form-section">
-          <label className="form-label">开发环境</label>
+          <label className="form-label">开发环境 *</label>
           <select
             className="form-select"
             value={formData.dev_environment}
             onChange={(e) => setFormData({ ...formData, dev_environment: e.target.value })}
             disabled={loading}
           >
-            <option value="Development">Development</option>
-            <option value="Testing">Testing</option>
-            <option value="Production">Production</option>
+            <option value="REACT+TypeScript+Vite">REACT+TypeScript+Vite</option>
+            <option value="VUE+TypeScript+Vite">VUE+TypeScript+Vite</option>
+            <option value=".NET CORE+EF">.NET CORE+EF</option>
+            <option value="Python+FastAPI">Python+FastAPI</option>
+            <option value="JAVA+SpringBoot">JAVA+SpringBoot</option>
           </select>
         </div>
 
         <div className="form-section">
-          <label className="form-label">AI工作目录</label>
+          <label className="form-label">gRPC 服务器地址 *</label>
           <input
             type="text"
             className="form-input"
-            placeholder="/app/ai_work"
+            placeholder="例如: localhost:50051"
+            value={formData.grpc_server_address}
+            onChange={(e) => setFormData({ ...formData, grpc_server_address: e.target.value })}
+            disabled={loading}
+          />
+          <div className="form-hint">💡 用于与后端服务通信的 gRPC 地址</div>
+        </div>
+
+        <div className="form-section">
+          <label className="form-label">LLM 模型</label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="GPT-4.1"
+            value={formData.llm_model}
+            onChange={(e) => setFormData({ ...formData, llm_model: e.target.value })}
+            disabled={loading}
+          />
+        </div>
+
+        <div className="form-section">
+          <label className="form-label">LLM URL</label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="http://43.132.224.225:8000/v1/chat/completions"
+            value={formData.llm_url}
+            onChange={(e) => setFormData({ ...formData, llm_url: e.target.value })}
+            disabled={loading}
+          />
+        </div>
+
+        <div className="form-section">
+          <label className="form-label">Git 工作目录</label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="/git_workspace"
+            value={formData.git_work_dir}
+            onChange={(e) => setFormData({ ...formData, git_work_dir: e.target.value })}
+            disabled={loading}
+          />
+        </div>
+
+        <div className="form-section">
+          <label className="form-label">AI 工作目录</label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="/aiWorkDir"
             value={formData.ai_work_dir}
             onChange={(e) => setFormData({ ...formData, ai_work_dir: e.target.value })}
             disabled={loading}

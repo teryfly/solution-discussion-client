@@ -44,6 +44,7 @@ export const ConversationList: React.FC = () => {
     model: string;
     role: string;
     name?: string;
+    systemPrompt?: string;
   }) => {
     try {
       const result = await conversationApi.createConversation({
@@ -51,6 +52,7 @@ export const ConversationList: React.FC = () => {
         model: data.model,
         assistance_role: data.role,
         name: data.name,
+        system_prompt: data.systemPrompt || 'You are a helpful AI assistant.',
       });
       showToast({ message: '会话已创建', type: 'success' });
       setShowNewModal(false);

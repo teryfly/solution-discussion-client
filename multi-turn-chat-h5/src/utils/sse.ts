@@ -72,31 +72,51 @@ export const sendMessageStream = (
   options: SSEOptions
 ): SSEClient => {
   const client = new SSEClient();
-  const queryParams = new URLSearchParams();
-  
-  Object.entries(data).forEach(([key, value]) => {
-    if (value !== undefined) {
-      if (Array.isArray(value)) {
-        queryParams.append(key, JSON.stringify(value));
-      } else {
-        queryParams.append(key, String(value));
-      }
-    }
-  });
+  const token = getAuthToken();
 
-  const endpoint = `/chat/conversations/${conversationId}/messages?${queryParams.toString()}`;
-  
+  // 验证 token
+  if (!token) {
+    options.onError?.(new Error('未找到认证令牌，请重新登录'));
+    return client;
+  }
+
+  // 构建请求体
+  const requestBody = {
+    role: data.role,
+    content: data.content,
+    model: data.model || 'ChatGPT-4o-Latest',
+    stream: data.stream !== false,
+    ...(data.documents && { documents: data.documents }),
+    ...(data.system_prompt_append && { system_prompt_append: data.system_prompt_append }),
+  };
+
+  const endpoint = `/chat/conversations/${conversationId}/messages`;
+
   fetch(`${API_URL}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getAuthToken()}`,
+      'Authorization': `Bearer ${token}`,
       'Accept': 'text/event-stream',
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(requestBody),
   }).then(async (response) => {
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const errorText = await response.text().catch(() => response.statusText);
+      let errorMessage = `HTTP ${response.status}`;
+      
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.detail || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+
+      if (response.status === 401) {
+        errorMessage = '认证失败，请重新登录';
+      }
+
+      throw new Error(errorMessage);
     }
 
     const reader = response.body?.getReader();
@@ -114,25 +134,28 @@ export const sendMessageStream = (
       }
 
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n\n');
+      const lines = chunk.split('\n');
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const data = line.slice(6);
+          const data = line.slice(6).trim();
           if (data === '[DONE]') {
             options.onComplete?.();
             return;
           }
-          try {
-            const parsed = JSON.parse(data);
-            options.onMessage(parsed);
-          } catch (e) {
-            console.error('Parse error:', e);
+          if (data) {
+            try {
+              const parsed = JSON.parse(data);
+              options.onMessage(parsed);
+            } catch (e) {
+              console.error('Parse error:', e, 'Data:', data);
+            }
           }
         }
       }
     }
   }).catch((error) => {
+    console.error('Stream request failed:', error);
     options.onError?.(error);
   });
 

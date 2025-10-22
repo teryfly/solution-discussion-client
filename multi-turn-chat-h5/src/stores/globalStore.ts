@@ -26,6 +26,7 @@ export const useGlobalStore = create<GlobalState>((set) => ({
 
   setUser: (user) => {
     storage.set(STORAGE_KEYS.CURRENT_USER, user);
+    // 不再在这里设置 AUTH_TOKEN，由调用方负责
     set({ user });
   },
 

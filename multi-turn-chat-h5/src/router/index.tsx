@@ -34,6 +34,10 @@ export const router = createBrowserRouter([
         element: <ProjectList />,
       },
       {
+        path: 'projects/new',
+        element: <ProjectEdit />,
+      },
+      {
         path: 'projects/:id/edit',
         element: <ProjectEdit />,
       },

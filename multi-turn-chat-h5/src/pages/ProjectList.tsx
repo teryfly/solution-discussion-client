@@ -39,6 +39,8 @@ export const ProjectList: React.FC = () => {
   const handleProjectClick = (project: Project) => {
     setCurrentProject(project);
     showToast({ message: `已切换到项目: ${project.name}`, type: 'success' });
+    // Auto-navigate to conversation list after switching project
+    navigate('/chat');
   };
 
   const handleNewProject = () => {
