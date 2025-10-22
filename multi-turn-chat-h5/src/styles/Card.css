@@ -1,0 +1,22 @@
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.card-clickable {
+  cursor: pointer;
+}
+
+.card-clickable:active {
+  transform: scale(0.98);
+  background: #f8f9fa;
+}
+
+.card-active {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+}

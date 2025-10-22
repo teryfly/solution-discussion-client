@@ -1,0 +1,48 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: #ffffff;
+  border-top: 1px solid #e8eaed;
+  display: flex;
+  z-index: 500;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #5f6368;
+}
+
+.nav-tab:active {
+  background: rgba(26, 115, 232, 0.05);
+}
+
+.nav-tab.active {
+  color: #1a73e8;
+}
+
+.nav-icon {
+  font-size: 24px;
+  transition: transform 0.2s ease;
+}
+
+.nav-tab.active .nav-icon {
+  transform: scale(1.1);
+}
+
+.nav-label {
+  font-size: 12px;
+  font-weight: 500;
+}

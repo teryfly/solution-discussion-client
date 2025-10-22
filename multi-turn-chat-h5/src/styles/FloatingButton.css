@@ -1,0 +1,47 @@
+.floating-button {
+  position: fixed;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 600;
+}
+
+.floating-button.bottom-right {
+  bottom: 80px;
+  right: 24px;
+}
+
+.floating-button.bottom-left {
+  bottom: 80px;
+  left: 24px;
+}
+
+.floating-button.primary {
+  background: #1a73e8;
+  color: #ffffff;
+}
+
+.floating-button.danger {
+  background: #d93025;
+  color: #ffffff;
+}
+
+.floating-button:active {
+  transform: scale(0.9);
+}
+
+.floating-button.primary:active {
+  background: #1557b0;
+}
+
+.floating-button.danger:active {
+  background: #b31412;
+}

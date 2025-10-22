@@ -1,73 +1,98 @@
-# React + TypeScript + Vite
+# AI辅助研发平台 - 移动端H5应用
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+基于 React + Vite + TypeScript 构建的移动端 PWA 应用，提供AI辅助研发、知识库管理、项目管理等功能。
 
-Currently, two official plugins are available:
+## 功能特性
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 💬 **会话管理**: 创建、查看、管理AI对话会话
+- 🏗️ **项目管理**: 项目配置、环境管理、AI工作目录设置
+- 📚 **知识库**: 文档管理、引用管理（开发中）
+- 📝 **执行日志**: 代码写入日志查看与筛选
+- 🌓 **主题切换**: 支持浅色/深色主题
+- 📱 **PWA支持**: 可安装到主屏幕，离线访问
 
-## React Compiler
+## 技术栈
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 18
+- TypeScript
+- Vite 5
+- React Router 6
+- Zustand (状态管理)
+- React Markdown
+- Event Source Polyfill (SSE支持)
 
-## Expanding the ESLint configuration
+## 快速开始
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 环境要求
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js >= 16
+- npm >= 8
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 安装依赖
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 开发模式
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+应用将在 http://localhost:5174 启动
+
+### 生产构建
+
+```bash
+npm run build
+```
+
+### 预览构建
+
+```bash
+npm run preview
+```
+
+## 项目结构
+
+```
+src/
+├── api/              # API接口封装
+├── components/       # React组件
+│   ├── common/      # 通用组件
+│   ├── chat/        # 对话相关组件
+│   ├── knowledge/   # 知识库组件（待开发）
+│   ├── project/     # 项目管理组件
+│   └── log/         # 日志组件
+├── hooks/           # 自定义Hooks
+├── pages/           # 页面组件
+├── router/          # 路由配置
+├── stores/          # 状态管理
+├── styles/          # 样式文件
+├── types/           # TypeScript类型定义
+└── utils/           # 工具函数
+```
+
+## 环境变量
+
+创建 `.env` 文件并配置:
+
+```
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+## API文档
+
+详见后端API契约文档
+
+## 浏览器支持
+
+- Chrome (推荐)
+- Safari
+- Firefox
+- Edge
+
+## License
+
+MIT

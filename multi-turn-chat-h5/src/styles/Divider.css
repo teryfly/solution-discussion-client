@@ -1,0 +1,33 @@
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.divider-small {
+  margin: 8px 0;
+}
+
+.divider-medium {
+  margin: 16px 0;
+}
+
+.divider-large {
+  margin: 24px 0;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e8eaed;
+}
+
+.divider-line.full {
+  flex: auto;
+}
+
+.divider-text {
+  font-size: 12px;
+  color: #5f6368;
+  white-space: nowrap;
+}
