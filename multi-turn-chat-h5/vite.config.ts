@@ -5,7 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    port: 5174,
+    port: 1572,
+    hmr: false, // 禁用热更新（HMR）
   },
   build: {
     outDir: 'dist',
