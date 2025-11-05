@@ -11,7 +11,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onKnowledgeClick,
   onSettingsClick,
 }) => {
-  const { currentProject } = useGlobalStore();
+  const { currentProject, user } = useGlobalStore();
 
   return (
     <div className="top-bar">
@@ -20,14 +20,19 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
       <div className="top-bar-actions">
         {onKnowledgeClick && (
-          <button className="top-bar-btn" onClick={onKnowledgeClick}>
+          <button className="top-bar-btn" onClick={onKnowledgeClick} title="知识库">
             📄
           </button>
         )}
         {onSettingsClick && (
-          <button className="top-bar-btn" onClick={onSettingsClick}>
-            ⚙
+          <button className="top-bar-btn" onClick={onSettingsClick} title="设置">
+            ⚙️
           </button>
+        )}
+        {user && (
+          <div className="top-bar-user" title={`用户: ${user.name || user.username}`}>
+            👤
+          </div>
         )}
       </div>
     </div>

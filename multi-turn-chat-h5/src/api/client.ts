@@ -1,5 +1,4 @@
 import { API_URL, getHeaders, handleApiError } from './config';
-import type { ApiResponse } from '../types';
 
 export class ApiClient {
   private async request<T>(
@@ -16,8 +15,12 @@ export class ApiClient {
         },
       });
 
+      // 严格检查响应状态
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({
+          detail: response.statusText || '请求失败'
+        }));
+        
         throw {
           response: {
             status: response.status,
@@ -27,8 +30,17 @@ export class ApiClient {
         };
       }
 
-      return await response.json();
+      // 确保返回有效的 JSON 数据
+      const data = await response.json();
+      
+      // 验证返回数据不为空
+      if (data === null || data === undefined) {
+        throw new Error('服务器返回数据为空');
+      }
+
+      return data;
     } catch (error) {
+      // 统一错误处理，确保所有错误都被正确抛出
       return handleApiError(error);
     }
   }

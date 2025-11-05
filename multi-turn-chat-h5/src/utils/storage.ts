@@ -34,9 +34,8 @@ export const storage = {
   },
 };
 
-// Specific storage keys
+// Specific storage keys - 移除 AUTH_TOKEN
 export const STORAGE_KEYS = {
-  AUTH_TOKEN: 'auth_token',
   CURRENT_USER: 'current_user',
   CURRENT_PROJECT: 'current_project',
   AUTO_UPDATE_CODE: 'auto_update_code',

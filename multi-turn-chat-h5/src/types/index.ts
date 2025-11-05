@@ -5,11 +5,12 @@ export interface ApiResponse<T = any> {
   detail?: string;
 }
 
-// User & Auth
+// User & Auth - 严格的类型定义
 export interface User {
   id: string;
   username: string;
-  token: string;
+  name: string; // 必须字段，从登录 API 获取
+  token: string; // 保留字段但不使用
 }
 
 // Project Types

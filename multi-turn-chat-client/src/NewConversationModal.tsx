@@ -36,10 +36,10 @@ const NewConversationModal: React.FC<Props> = ({
   defaultProjectName
 }) => {
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
-  const [role, setRole] = useState('软件架构师'); // 默认角色
+  const [role, setRole] = useState('敏捷开发工程师'); // 默认角色
   const [name, setName] = useState(generateDefaultName());
-  const [system, setSystem] = useState(ROLE_CONFIGS['软件架构师'].prompt);
-  const [model, setModel] = useState(ROLE_CONFIGS['软件架构师'].model);
+  const [system, setSystem] = useState(ROLE_CONFIGS['敏捷开发工程师'].prompt);
+  const [model, setModel] = useState(ROLE_CONFIGS['敏捷开发工程师'].model);
   const [projectId, setProjectId] = useState(0);
   const [modelList, setModelList] = useState<string[]>([]);
   const [learnSourceCode, setLearnSourceCode] = useState(false); // ✅ 是否学习项目源码
@@ -58,9 +58,9 @@ const NewConversationModal: React.FC<Props> = ({
 
   useEffect(() => {
     if (visible) {
-      setRole('软件架构师'); // 默认
+      setRole('敏捷开发工程师'); // 默认
       setName(generateDefaultName());
-      setSystem(ROLE_CONFIGS['软件架构师'].prompt);
+      setSystem(ROLE_CONFIGS['敏捷开发工程师'].prompt);
       setLearnSourceCode(false);
       getProjects().then((_projects) => {
         setProjects(_projects);
@@ -71,7 +71,7 @@ const NewConversationModal: React.FC<Props> = ({
         }
         setProjectId(defaultId);
       });
-      const { list, value } = getModelsAndSelect('软件架构师', modelOptions);
+      const { list, value } = getModelsAndSelect('敏捷开发工程师', modelOptions);
       setModelList(list);
       setModel(value);
     }

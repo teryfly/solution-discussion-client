@@ -1,5 +1,5 @@
 import { EventSourcePolyfill } from 'event-source-polyfill';
-import { API_URL, getAuthToken } from '../api/config';
+import { API_URL } from '../api/config';
 import type { SSEMessage } from '../types';
 
 export interface SSEOptions {
@@ -11,17 +11,12 @@ export interface SSEOptions {
 export class SSEClient {
   private eventSource: EventSourcePolyfill | null = null;
 
-  connect(endpoint: string, options: SSEOptions, needsAuth: boolean = true): void {
+  connect(endpoint: string, options: SSEOptions, needsAuth: boolean = false): void {
     const headers: Record<string, string> = {
       'Accept': 'text/event-stream',
     };
 
-    if (needsAuth) {
-      const token = getAuthToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-    }
+    // 不需要 token 认证
 
     this.eventSource = new EventSourcePolyfill(`${API_URL}${endpoint}`, {
       headers,
@@ -72,13 +67,6 @@ export const sendMessageStream = (
   options: SSEOptions
 ): SSEClient => {
   const client = new SSEClient();
-  const token = getAuthToken();
-
-  // 验证 token
-  if (!token) {
-    options.onError?.(new Error('未找到认证令牌，请重新登录'));
-    return client;
-  }
 
   // 构建请求体
   const requestBody = {
@@ -96,7 +84,6 @@ export const sendMessageStream = (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
       'Accept': 'text/event-stream',
     },
     body: JSON.stringify(requestBody),

@@ -41,8 +41,17 @@ export const TabsBar: React.FC<{
   onAdd: () => void;
   onSelectAll?: () => void;
   showSelectAll?: boolean;
-}> = ({ tabs, active, onChange, onAdd, onSelectAll, showSelectAll }) => (
-  <div style={{ padding: '12px 20px', borderBottom: '1px solid #eee', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+  // new controls
+  latestOnly: boolean;
+  onLatestOnlyChange: (v: boolean) => void;
+  searchQuery: string;
+  onSearchQueryChange: (v: string) => void;
+  selectedCount: number;
+}> = ({
+  tabs, active, onChange, onAdd, onSelectAll, showSelectAll,
+  latestOnly, onLatestOnlyChange, searchQuery, onSearchQueryChange, selectedCount
+}) => (
+  <div style={{ padding: '12px 20px', borderBottom: '1px solid #eee', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
     {tabs.map(tab => (
       <button
         key={String(tab.key)}
@@ -61,38 +70,72 @@ export const TabsBar: React.FC<{
         {tab.label} ({tab.count})
       </button>
     ))}
-    <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-      {showSelectAll && (
-        <button
-          onClick={onSelectAll}
-          style={{
-            padding: '6px 12px',
-            background: 'none',
-            border: '1px solid #1a73e8',
-            color: '#1a73e8',
-            borderRadius: 4,
-            cursor: 'pointer',
-            fontSize: 12,
-          }}
-        >
-          本页全选/不选
-        </button>
-      )}
+
+    {/* Spacer */}
+    <div style={{ flex: 1 }} />
+
+    {/* Selected count */}
+    <div style={{ fontSize: 12, color: '#666' }}>
+      已选: {selectedCount}
+    </div>
+
+    {/* Latest-only checkbox */}
+    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={latestOnly}
+        onChange={(e) => onLatestOnlyChange(e.target.checked)}
+        style={{ margin: 0, cursor: 'pointer' }}
+        />
+      仅显示最新版本
+    </label>
+
+    {/* Search input */}
+    <input
+      type="text"
+      value={searchQuery}
+      onChange={(e) => onSearchQueryChange(e.target.value)}
+      placeholder="模糊搜索(文件名/内容)"
+      style={{
+        padding: '6px 8px',
+        border: '1px solid #ddd',
+        borderRadius: 6,
+        fontSize: 12,
+        minWidth: 180,
+      }}
+    />
+
+    {showSelectAll && (
       <button
-        onClick={onAdd}
+        onClick={onSelectAll}
         style={{
           padding: '6px 12px',
-          background: '#4caf50',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 6,
+          background: 'none',
+          border: '1px solid #1a73e8',
+          color: '#1a73e8',
+          borderRadius: 4,
           cursor: 'pointer',
           fontSize: 12,
         }}
-        title="新增文档"
       >
-        + 新增文档
+        本页全选/不选
       </button>
-    </div>
+    )}
+
+    <button
+      onClick={onAdd}
+      style={{
+        padding: '6px 12px',
+        background: '#4caf50',
+        color: '#fff',
+        border: 'none',
+        borderRadius: 6,
+        cursor: 'pointer',
+        fontSize: 12,
+      }}
+      title="新增文档"
+    >
+      + 新增文档
+    </button>
   </div>
 );

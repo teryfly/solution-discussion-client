@@ -8,25 +8,54 @@ interface GlobalState {
   autoUpdateCode: boolean;
   theme: 'light' | 'dark';
   fontSize: 'small' | 'medium' | 'large';
-  
+
   setUser: (user: User | null) => void;
   setCurrentProject: (project: Project | null) => void;
   setAutoUpdateCode: (enabled: boolean) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setFontSize: (size: 'small' | 'medium' | 'large') => void;
   logout: () => void;
+  isAuthenticated: () => boolean;
 }
 
-export const useGlobalStore = create<GlobalState>((set) => ({
-  user: storage.get<User>(STORAGE_KEYS.CURRENT_USER),
+const validateUser = (user: any): user is User => {
+  return !!(
+    user &&
+    typeof user === 'object' &&
+    typeof user.id === 'string' &&
+    user.id.trim().length > 0 &&
+    typeof user.username === 'string' &&
+    user.username.trim().length > 0 &&
+    typeof user.name === 'string' &&
+    user.name.trim().length > 0
+  );
+};
+
+const getInitialUser = (): User | null => {
+  const stored = storage.get<User>(STORAGE_KEYS.CURRENT_USER);
+  if (validateUser(stored)) return stored;
+  storage.remove(STORAGE_KEYS.CURRENT_USER);
+  return null;
+};
+
+export const useGlobalStore = create<GlobalState>((set, get) => ({
+  user: getInitialUser(),
   currentProject: storage.get<Project>(STORAGE_KEYS.CURRENT_PROJECT),
   autoUpdateCode: storage.get<boolean>(STORAGE_KEYS.AUTO_UPDATE_CODE, false),
   theme: storage.get<'light' | 'dark'>(STORAGE_KEYS.THEME, 'light'),
   fontSize: storage.get<'small' | 'medium' | 'large'>(STORAGE_KEYS.FONT_SIZE, 'medium'),
 
   setUser: (user) => {
-    storage.set(STORAGE_KEYS.CURRENT_USER, user);
-    // 不再在这里设置 AUTH_TOKEN，由调用方负责
+    if (user && !validateUser(user)) {
+      storage.remove(STORAGE_KEYS.CURRENT_USER);
+      set({ user: null });
+      return;
+    }
+    if (user) {
+      storage.set(STORAGE_KEYS.CURRENT_USER, user);
+    } else {
+      storage.remove(STORAGE_KEYS.CURRENT_USER);
+    }
     set({ user });
   },
 
@@ -53,8 +82,10 @@ export const useGlobalStore = create<GlobalState>((set) => ({
   },
 
   logout: () => {
-    storage.remove(STORAGE_KEYS.AUTH_TOKEN);
     storage.remove(STORAGE_KEYS.CURRENT_USER);
-    set({ user: null });
+    storage.remove(STORAGE_KEYS.CURRENT_PROJECT);
+    set({ user: null, currentProject: null });
   },
+
+  isAuthenticated: () => validateUser(get().user),
 }));

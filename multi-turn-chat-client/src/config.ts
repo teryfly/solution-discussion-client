@@ -5,6 +5,8 @@ export const MAX_AUTO_CONTINUE_ROUNDS = 25;
 export const COLLAPSE_LENGTH = 150; // 折叠后显示字数
 /** ✅ 后端服务基础地址 */
 export const BASE_URL = 'http://localhost:8000/v1';
+export const UML_URL='http://192.168.120.221:30008/svg';
+export const UML_URL2='https://www.plantuml.com/plantuml/svg';
 
 /** ✅ 测试 API 密钥（如无需校验可留空） */
 export const API_KEY = 'sk-test';
@@ -411,7 +413,9 @@ Do not add any explanatory text, and do not ask me any questions.
     ,
   },  
   "系统分析师": {
-    "prompt": "你将需求转化为技术规格。根据需求文档：1) 设计系统用例 2) 创建活动图 3) 定义领域模型 4) 输出《技术需求说明书》。需识别技术约束条件。"+USER_FEADBAK,
+    "prompt": `
+    高层次的总览图,只展示各个限界上下文(Bounded Context)之间的关系
+    `+USER_FEADBAK,
     "model": "GPT-5-Chat",
     "desc": "请提供需求规格书及非功能性需求。目标是输出《技术需求说明书》。"
   },
@@ -991,7 +995,7 @@ IA-3.1, IA-3.2, …
 
 ---
 
-### **Stage 4 — Low-Fidelity Prototypes (低保真原型)**
+### **Stage 4 — Wireframe Blueprints (交互原型框架)**
 
 **Goal:**  
 Translate the information architecture into early-stage visual layouts to validate navigation, hierarchy, and usability before detailed UI design.
@@ -1054,7 +1058,7 @@ Do **not** proceed to the next stage until user feedback is received.
     "model": "GPT-5",
     "desc": "Defines user stories, journeys, information architecture, prototypes, page fields, and interaction specifications to produce a complete UX blueprint aligned with system design and user needs.",
   },
-  "**DHIS2 Mapping Designer": {
+  "**DHIS2 A -Mapping Designer": {
     "prompt": `
     ## *DHIS2 Functional & Metadata Mapping Designer (Aligned with v2.41)*
 
@@ -1196,7 +1200,7 @@ Optionally map these advanced features if relevant:
     "model": "Claude-Sonnet-4.5",
     "desc": "DHIS2 v2.41 system mapping from design artifacts to platform constructs.",
   },
-  "**DHIS2 B-Meta": {
+  "**DHIS2 B-Meta Generator": {
     "prompt": `
     You are an expert DHIS2 v2.41 metadata architect. Your task is to generate **production-ready, import-compliant JSON metadata files** from the provided Mapping Design Document.
 
@@ -1466,9 +1470,9 @@ Generate **human-readable 11-character UIDs** following these patterns:
 
 | Object Type         | Pattern                     | Example        | Notes（MUST exactly 11-character) |
 | ------------------- | --------------------------- | -------------- | --------------------------------- |
-| 11                  | \`Tet\` + CamelCase + padding | \`TetPerson01\`  | Max 3 words                       |
+| trackedEntityTypes  | \`Tet\` + CamelCase + padding | \`TetPerson01\`  |                               |
 | Attribute           | \`Attr\` + Short + padding    | \`AttrFullNm01\` | Abbreviate long names             |
-| DataElement         | \`De\` + CamelCase + padding  | \`DeCaseStat1\`  | Keep under 11 chars               |
+| DataElement         | \`De\` + CamelCase + padding  | \`DeCaseStat1\`  | Descriptive               |
 | OptionSet           | \`Os\` + CamelCase + padding  | \`OsGender0001\` | Descriptive                       |
 | Option              | \`Opt\` + Short + padding     | \`OptMale0001\`  | Match parent set                  |
 | Program             | \`Prg\` + Short + number      | \`PrgCaseMgt1\`  | Business domain                   |

@@ -30,6 +30,12 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = (props) =>
     filteredDocuments,
     isAllSelectedInTab,
     reload,
+    // new states
+    latestOnly,
+    setLatestOnly,
+    searchQuery,
+    setSearchQuery,
+    selectedCountInFiltered,
   } = state;
 
   const { toggleSelect, selectAllInTab, save } = actions;
@@ -42,7 +48,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = (props) =>
     if (visible) setActiveCategoryId('all');
   }, [visible, setActiveCategoryId]);
 
-  // 兜底：如果引用页未显式传入 conversationId，则尝试从 URL 上下文注入
   const fallbackConversationId = useMemo(() => {
     if (conversationId) return conversationId;
     try {
@@ -100,6 +105,12 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = (props) =>
               onAdd={() => setShowAddDocumentModal(true)}
               onSelectAll={selectAllInTab}
               showSelectAll={filteredDocuments.length > 0}
+              // new controls
+              latestOnly={latestOnly}
+              onLatestOnlyChange={setLatestOnly}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              selectedCount={selectedCountInFiltered}
             />
             <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
               <DocList
@@ -110,8 +121,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = (props) =>
                 onToggle={toggleSelect}
                 onEdit={(doc, e) => {
                   e.stopPropagation();
-                  // 修正点：使用列表项中返回的文档ID，避免传入 undefined
-                  // availableDocuments/filteredDocuments 的每个 doc 都有合法的 id
                   setSelectedDocumentForEdit(doc);
                   setShowDocumentDetailModal(true);
                 }}
@@ -212,7 +221,6 @@ const DocumentReferenceModal: React.FC<DocumentReferenceModalProps> = (props) =>
       {showDocumentDetailModal && selectedDocumentForEdit && (
         <DocumentDetailModal
           visible={true}
-          // 修正点：明确传入 document_id，避免 undefined
           document={{
             id: selectedDocumentForEdit.id,
             project_id: selectedDocumentForEdit.project_id,

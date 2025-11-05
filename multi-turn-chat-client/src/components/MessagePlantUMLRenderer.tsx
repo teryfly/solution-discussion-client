@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { parseTextWithPlantUML, PlantUMLSegment } from '../utils/plantUMLUtils';
 import UMLSaveDropdown from './UMLSaveDropdown';
 import { useProject } from '../context/ProjectContext';
+import { UML_URL} from '../config';
 
 // 动态加载 pako 库
 function loadPakoLibrary(): Promise<any> {
@@ -229,8 +230,7 @@ const PlantUMLImage: React.FC<PlantUMLImageProps> = ({ umlCode, onError }) => {
   const [copyCodeFeedback, setCopyCodeFeedback] = useState(false);
   const [copyImageFeedback, setCopyImageFeedback] = useState(false);
 
-  const plantumlServer = 'https://www.plantuml.com/plantuml/svg';
-  //const plantumlServer = 'http://192.168.120.221:30008/svg';
+  const plantumlServer = UML_URL
   const { getCurrentProject } = useProject();
   const currentProject = getCurrentProject();
 

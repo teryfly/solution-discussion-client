@@ -39,7 +39,7 @@ export function shouldAutoContinue(text: string, rounds: number): { shouldContin
     if (info.hasIncomplete && !info.hasFinal) {
       return { 
         shouldContinue: true, 
-        continueMessage: 'Go on. If any incomplete code block (```) exists from the last output, find the/these incomplete Step(s) and regenerate it/them. Skip any steps that were already properly completed.'
+        continueMessage: "If the last step's code block (```) of the last output is incomplete (``` not paired), regenerate the incomplete step, and then continue to output the next step(s). If the last step's code block (```) of the last output is complete (``` paired), please continue to output the next step(s)."
       };
     }
   }

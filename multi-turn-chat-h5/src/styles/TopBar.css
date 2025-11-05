@@ -27,6 +27,7 @@
 .top-bar-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .top-bar-btn {
@@ -45,4 +46,17 @@
 
 .top-bar-btn:active {
   background: rgba(26, 115, 232, 0.1);
+}
+
+.top-bar-user {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f0fe;
+  border-radius: 50%;
+  font-size: 18px;
+  color: #1a73e8;
+  cursor: default;
 }
