@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { KnowledgeHeaderProps } from './KnowledgePanelTypes';
 import {
   clearProjectDocumentReferences,
@@ -8,6 +8,7 @@ import {
   setProjectDocumentReferences,
   setConversationDocumentReferences,
 } from '../../api';
+import { buildReferencedKnowledgeContent, estimateTokenCount } from '../../utils/knowledgeClipboard';
 
 const KnowledgeHeader: React.FC<KnowledgeHeaderProps> = ({
   conversationId,
@@ -22,11 +23,17 @@ const KnowledgeHeader: React.FC<KnowledgeHeaderProps> = ({
   const knowledgeAreaRef = useRef<HTMLDivElement>(null);
   const [hoveredDoc, setHoveredDoc] = useState<{ type: 'project' | 'conversation'; id: number } | null>(null);
   const [removingDoc, setRemovingDoc] = useState<{ type: 'project' | 'conversation'; id: number } | null>(null);
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     const area = knowledgeAreaRef.current;
     if (!area) return;
   }, []);
+
+  // 是否有任何引用文档（用于显示复制图标）
+  const hasAnyReferences = useMemo(() => {
+    return (references.projectReferences?.length || 0) + (references.conversationReferences?.length || 0) > 0;
+  }, [references.projectReferences, references.conversationReferences]);
 
   // 根据后端提供的正确接口语义：需要重写整组引用，即获取全部 -> 过滤 -> 覆盖保存
   const removeOneReference = async (type: 'project' | 'conversation', removeDocumentId: number) => {
@@ -74,6 +81,26 @@ const KnowledgeHeader: React.FC<KnowledgeHeaderProps> = ({
       alert('删除引用失败: ' + (error?.message || '未知错误'));
     } finally {
       setRemovingDoc(null);
+    }
+  };
+
+  const handleCopyAllKnowledge = async () => {
+    if (!conversationId || copying) return;
+    try {
+      setCopying(true);
+      const content = await buildReferencedKnowledgeContent(conversationId);
+      if (!content.trim()) {
+        // 无引用则不显示图标，通常不会到这里
+        return;
+      }
+      await navigator.clipboard.writeText(content);
+      const tokens = estimateTokenCount(content);
+      alert(`知识库引用内容已复制到剪贴板，共约 ${tokens} tokens`);
+    } catch (e: any) {
+      console.error('复制知识库引用失败:', e);
+      alert('复制失败，请重试');
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -217,16 +244,36 @@ const KnowledgeHeader: React.FC<KnowledgeHeaderProps> = ({
           margin: '0 0 16px 0',
         }}
       >
-        <h4
-          style={{
-            margin: 0,
-            fontSize: '14px',
-            fontWeight: 'bold',
-            color: '#333',
-          }}
-        >
-          文档
-        </h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h4
+            style={{
+              margin: 0,
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#333',
+            }}
+          >
+            文档
+          </h4>
+          {hasAnyReferences && (
+            <button
+              onClick={handleCopyAllKnowledge}
+              disabled={copying}
+              title={copying ? '复制中...' : '复制引用的全部知识库内容'}
+              style={{
+                background: copying ? '#ccc' : '#1a73e8',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                padding: '2px 6px',
+                fontSize: 12,
+                cursor: copying ? 'not-allowed' : 'pointer',
+              }}
+            >
+              复制
+            </button>
+          )}
+        </div>
         <button
           onClick={onAddDocument}
           style={{
